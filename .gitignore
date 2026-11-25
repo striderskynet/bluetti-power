@@ -1,0 +1,12 @@
+# Entorno de Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Empaquetado temporal de PyInstaller
+build/
+*.spec.bak
+
+# Configuración y registros locales
+*.log
+config.json
