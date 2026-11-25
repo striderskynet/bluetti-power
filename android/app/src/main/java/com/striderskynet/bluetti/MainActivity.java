@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,9 +22,11 @@ import java.util.Locale;
 /** Pantalla principal: estado, búsqueda de equipo y activación del widget/servicio. */
 public final class MainActivity extends Activity {
 
+    public static final String APP_VERSION = "0.2";
     private static final int REQUEST_PERMISSIONS = 10;
 
     private TextView deviceLine;
+    private TextView appVersion;
     private TextView statusPct;
     private TextView statusW;
     private TextView statusState;
@@ -52,6 +55,8 @@ public final class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         deviceLine = findViewById(R.id.device_line);
+        appVersion = findViewById(R.id.app_version);
+        appVersion.setText("v" + APP_VERSION);
         statusPct = findViewById(R.id.status_pct);
         statusW = findViewById(R.id.status_w);
         statusState = findViewById(R.id.status_state);
@@ -321,7 +326,13 @@ public final class MainActivity extends Activity {
                 .setTitle(R.string.logs)
                 .setView(scroll)
                 .setPositiveButton(R.string.close, null)
-                .setNeutralButton(R.string.clear_logs, new android.content.DialogInterface.OnClickListener() {
+                .setNeutralButton(R.string.share_logs, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        shareLogs();
+                    }
+                })
+                .setNegativeButton(R.string.clear_logs, new android.content.DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(android.content.DialogInterface dialog, int which) {
                         Logs.clear(MainActivity.this);
@@ -329,6 +340,14 @@ public final class MainActivity extends Activity {
                     }
                 })
                 .show();
+    }
+
+    private void shareLogs() {
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType("text/plain");
+        send.putExtra(Intent.EXTRA_SUBJECT, "Registro Bluetti v" + APP_VERSION);
+        send.putExtra(Intent.EXTRA_TEXT, Logs.tail(this));
+        startActivity(Intent.createChooser(send, getString(R.string.share_logs)));
     }
 
     // -------------------------------------------------------- permisos

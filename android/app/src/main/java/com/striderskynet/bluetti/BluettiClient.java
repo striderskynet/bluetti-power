@@ -95,6 +95,9 @@ public final class BluettiClient {
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic notifyCharacteristic;
     private BluetoothGattCharacteristic writeCharacteristic;
+    private volatile int mtu = 23;
+    private int notificationsSeen;
+    private String lastStage = "inicio";
 
     private volatile CountDownLatch connectLatch;
     private volatile CountDownLatch mtuLatch;
@@ -215,24 +218,11 @@ public final class BluettiClient {
         int hint = Prefs.hint(context);
         String lastError = "no se pudo leer el equipo";
 
-        for (int attempt = 0; attempt < 2; attempt++) {
-            BluettiClient client = new BluettiClient(context);
-            try {
-                client.read(address, hint, reading);
-                reading.error = null;
-                reading.time = System.currentTimeMillis();
-                Prefs.saveReading(context, reading);
-                Logs.log(context, "OK " + address + ": " + reading.percent + "%, " + reading.totalOut() + " W"
-                        + (reading.encrypted ? " (cifrado)" : ""));
-                return reading;
-            } catch (Exception exc) {
-                lastError = friendly(exc);
-                Logs.log(context, "Fallo leyendo " + address + ": " + lastError);
-            } finally {
-                client.close();
-            }
-
-            if (attempt == 0) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (attempt == 1) {
+                Logs.log(context, "Reintento de lectura en la misma dirección…");
+                sleepQuietly(1200);
+            } else if (attempt == 2 && !wantedName.isEmpty()) {
                 try {
                     ScanHit hit = scanFor(context, wantedName, 6000);
                     if (hit != null && !hit.address.equalsIgnoreCase(address)) {
@@ -244,6 +234,22 @@ public final class BluettiClient {
                 } catch (Exception scanExc) {
                     Logs.log(context, "Escaneo de recuperación fallido: " + friendly(scanExc));
                 }
+            }
+
+            BluettiClient client = new BluettiClient(context);
+            try {
+                client.read(address, hint, reading);
+                reading.error = null;
+                reading.time = System.currentTimeMillis();
+                Prefs.saveReading(context, reading);
+                Logs.log(context, "OK " + address + ": " + reading.percent + "%, " + reading.totalOut() + " W"
+                        + (reading.encrypted ? " (cifrado)" : ""));
+                return reading;
+            } catch (Exception exc) {
+                lastError = friendly(exc);
+                Logs.log(context, "Fallo leyendo " + address + " (intento " + (attempt + 1) + "): " + lastError);
+            } finally {
+                client.close();
             }
         }
 
@@ -337,10 +343,12 @@ public final class BluettiClient {
             throw new IOException("no se pudo conectar (¿equipo encendido y cerca?)");
         }
 
+        mtuLatch = new CountDownLatch(1);
+        mtu = 23;
         if (gatt.requestMtu(517)) {
-            mtuLatch = new CountDownLatch(1);
-            await(mtuLatch, 3000);
+            await(mtuLatch, 4000);
         }
+        Logs.log(context, "Conectado; MTU=" + mtu);
 
         servicesLatch = new CountDownLatch(1);
         servicesOk = false;
@@ -364,6 +372,14 @@ public final class BluettiClient {
         }
         if (notifyCharacteristic == null || writeCharacteristic == null) {
             throw new IOException("el equipo no expone las características ff01/ff02");
+        }
+        Logs.log(context, "Servicios OK; ff01/ff02 encontrados");
+        if (mtu < 149) {
+            mtuLatch = new CountDownLatch(1);
+            if (gatt.requestMtu(517)) {
+                await(mtuLatch, 3000);
+            }
+            Logs.log(context, "MTU reintentado; ahora " + mtu);
         }
 
         if (!gatt.setCharacteristicNotification(notifyCharacteristic, true)) {
@@ -393,6 +409,7 @@ public final class BluettiClient {
         if (!started || !await(descriptorLatch, 4000) || !descriptorOk) {
             throw new IOException("no se pudo activar el canal de notificaciones");
         }
+        Logs.log(context, "Notificaciones activadas; esperando handshake…");
     }
 
     private boolean establishChannel(int hint) throws IOException {
@@ -400,12 +417,14 @@ public final class BluettiClient {
             encryptedMode = false;
             return false;
         }
+        lastStage = "esperando challenge";
         long firstWait = hint == Prefs.HINT_ENCRYPTED ? 8000 : 2500;
         byte[] first = pollNotification(firstWait);
         if (first != null) {
             handleNotification(first);
         }
         if (handshakeStarted) {
+            lastStage = "handshake";
             long deadline = System.currentTimeMillis() + 25000;
             while (!crypto.isReady() && System.currentTimeMillis() < deadline) {
                 byte[] message = pollNotification(deadline - System.currentTimeMillis());
@@ -417,10 +436,14 @@ public final class BluettiClient {
             encryptedMode = crypto.isReady();
         }
         if (encryptedMode) {
+            Logs.log(context, "Canal cifrado listo (MTU=" + mtu + ")");
             return true;
         }
         if (hint == Prefs.HINT_ENCRYPTED) {
-            throw new IOException("el equipo no completó el canal cifrado");
+            String detail = "el equipo no completó el canal cifrado (etapa: " + lastStage
+                    + ", MTU=" + mtu + ", notificaciones=" + notificationsSeen + ")";
+            Logs.log(context, "ERROR: " + detail);
+            throw new IOException(detail);
         }
         encryptedMode = false;
         return false;
@@ -439,6 +462,7 @@ public final class BluettiClient {
     }
 
     private void handleNotification(byte[] message) throws IOException {
+        notificationsSeen++;
         if (message.length == 0) {
             disconnected = true;
             return;
@@ -446,6 +470,8 @@ public final class BluettiClient {
         try {
             if (BluettiCrypto.isPreKey(message)) {
                 handshakeStarted = true;
+                lastStage = "KEX crudo";
+                Logs.log(context, "KEX crudo " + message.length + " bytes, tipo " + (message[2] & 0xFF));
                 rawKexBuffer.write(message);
                 byte[] buffer = rawKexBuffer.toByteArray();
                 while (buffer.length >= 6) {
@@ -483,10 +509,16 @@ public final class BluettiClient {
                         int type = plain[2] & 0xFF;
                         if (type == BluettiCrypto.TYPE_PEER_PUBKEY) {
                             // La clave pública del equipo también llega cifrada.
+                            lastStage = "peer pubkey";
+                            Logs.log(context, "Peer pubkey cifrada recibida; respondiendo");
                             byte[] reply = crypto.peerPubkeyReply(plain);
                             writeRaw(reply);
                         } else if (type == BluettiCrypto.TYPE_PUBKEY_ACCEPTED) {
+                            lastStage = "clave aceptada";
+                            Logs.log(context, "Clave aceptada; derivando clave de sesión");
                             crypto.onDecryptedMessage(plain);
+                        } else {
+                            Logs.log(context, "Mensaje KEX tipo " + type);
                         }
                     } else {
                         plainMessages.add(plain);
@@ -496,7 +528,9 @@ public final class BluettiClient {
                 plainMessages.add(message);
             }
         } catch (Exception exc) {
-            throw new IOException("error de protocolo: " + exc.getMessage(), exc);
+            String detail = "error de protocolo (" + lastStage + "): " + exc.getMessage();
+            Logs.log(context, detail);
+            throw new IOException(detail, exc);
         }
     }
 
@@ -557,6 +591,7 @@ public final class BluettiClient {
         if (gatt == null || writeCharacteristic == null) {
             throw new IOException("conexión BLE cerrada");
         }
+        Logs.log(context, "→ " + data.length + " bytes" + (data.length > mtu - 3 ? " (mayor que MTU-3)" : ""));
         writeLatch = new CountDownLatch(1);
         writeOk = false;
         boolean started;
@@ -569,10 +604,20 @@ public final class BluettiClient {
             started = gatt.writeCharacteristic(writeCharacteristic);
         }
         if (!started) {
+            Logs.log(context, "No se pudo iniciar la escritura (" + data.length + " bytes)");
             throw new IOException("no se pudo iniciar la escritura BLE");
         }
         if (!await(writeLatch, 6000) || !writeOk) {
+            Logs.log(context, "Escritura BLE sin éxito (" + data.length + " bytes)");
             throw new IOException("escritura BLE fallida");
+        }
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException exc) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -623,6 +668,7 @@ public final class BluettiClient {
 
         @Override
         public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+            BluettiClient.this.mtu = mtu;
             if (mtuLatch != null) {
                 mtuLatch.countDown();
             }

@@ -16,9 +16,22 @@ Sin nube, sin telemetría, sin cuentas. Todo se queda en el móvil.
 
 > **Estado:** el protocolo (MODBUS + handshake cifrado BLE) está validado con
 > una autoprueba contra vectores de la implementación de referencia y una
-> simulación completa del intercambio. **Falta la prueba en un móvil real**
-> (durante el desarrollo no había ningún Android conectado al PC). Si algo
-> falla, el registro dentro de la app ayuda a diagnosticarlo.
+> simulación completa del intercambio, y con el cliente Python del port de
+> Raspberry contra un AC180P real. En Android, la v0.2 corrige el handshake
+> cifrado (la clave pública del equipo llega cifrada), añade reintentos y
+> guarda un diagnóstico detallado que se puede compartir desde la app.
+> **Falta la prueba en un móvil real** (durante el desarrollo no había ningún
+> Android conectado al PC). Si algo falla, abre **Registro → Compartir** y
+> envíame el texto: incluye MTU, notificaciones y la etapa exacta del handshake.
+
+### v0.2 (importante si vienes de v0.1)
+
+- Corregido el handshake: la clave pública del equipo llega **cifrada** con la
+  clave temporal; antes se ignoraba y el equipo cortaba la conexión.
+- 3 reintentos automáticos (misma dirección y búsqueda por nombre).
+- MTU: se registra el valor negociado y se reintenta si es bajo.
+- Log de cada etapa del handshake visible en la app, con botón **Compartir**.
+- Misma clave de firma que v0.1: se instala **encima** sin desinstalar.
 
 ## Instalación
 

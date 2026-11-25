@@ -18,6 +18,7 @@
     <string name="notifications_needed">Concede el permiso de notificaciones para el servicio en segundo plano.</string>
     <string name="permissions_missing">Faltan permisos de Bluetooth. Concédelos para poder conectarse.</string>
     <string name="logs">Registro</string>
+    <string name="share_logs">Compartir</string>
     <string name="demo_enable">Modo demo: activar</string>
     <string name="demo_disable">Modo demo: desactivar</string>
     <string name="demo_on">Modo demo activado: datos simulados para probar el widget</string>

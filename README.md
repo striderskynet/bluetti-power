@@ -240,9 +240,12 @@ En [`android/`](android/README.md) hay una app Android ultraligera (**APK de
 **widget de pantalla de inicio** con la carga y el consumo, actualizado **cada
 5 minutos** mediante un servicio en primer plano.
 
-- APK listo para instalar: [`dist/BluettiWidget-v0.1.apk`](dist/BluettiWidget-v0.1.apk)
+- APK listo para instalar: [`dist/BluettiWidget-v0.2.apk`](dist/BluettiWidget-v0.2.apk)
 - App: buscar el AC180P, leer al momento, activar la actualización cada 5 min,
   notificación con el estado y modo demo sin equipo.
+- v0.2: handshake cifrado corregido (la clave pública del equipo llega
+  cifrada), reintentos automáticos y diagnóstico del handshake con registro
+  compartible desde la app.
 - El protocolo (MODBUS + handshake cifrado) está portado a Java y validado con
   una autoprueba que se ejecuta al compilar (vectores de referencia + handshake
   simulado). Pendiente de probar en un móvil real.
