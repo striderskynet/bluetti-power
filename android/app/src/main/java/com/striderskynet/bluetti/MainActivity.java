@@ -33,7 +33,7 @@ import java.util.Locale;
 /** Pantalla principal: lista de estaciones, ajustes y diagnóstico. */
 public final class MainActivity extends Activity {
 
-    public static final String APP_VERSION = "0.4";
+    public static final String APP_VERSION = "0.4.1";
     private static final int REQUEST_PERMISSIONS = 10;
     private static final int[] INTERVAL_SECONDS = {60, 120, 300, 600, 900, 1800, 3600};
 

@@ -28,7 +28,7 @@ Sin nube, sin cuentas, sin telemetría. Todo se queda en el móvil.
 
 ## Instalación
 
-1. Descarga `dist/BluettiWidget-v0.4.apk` (o desde el release de GitHub) y
+1. Descarga `dist/BluettiWidget-v0.4.1.apk` (o desde el release de GitHub) y
    ábrelo en el móvil; acepta **instalar apps de origen desconocido**.
 2. Concede permisos: **Dispositivos cercanos**, **Notificaciones** y, en
    Android 11 o inferior, **Ubicación**.
@@ -104,6 +104,7 @@ simulados por estación).
 
 ## Actualizar desde versiones anteriores
 
+- **v0.4.1**: compatibilidad del widget: iconos en PNG (no vectores), PreviewBar con estilo explícito, sin previewLayout ni View separador. Corrige el error «Couldn't load the widget» en algunos launchers.
 - **v0.4**: el widget (4×3) añade entrada solar, entrada de red, voltaje de red,
   salidas AC/DC y energía restante/total con iconos; botón **Acerca de**.
   La energía restante es aproximada (capacidad del modelo × % de batería).
@@ -167,3 +168,5 @@ Protocolo y criptografía basados en
 [`bluetti-bt-lib`](https://github.com/Patrick762/bluetti-bt-lib) (MIT) y en el
 trabajo original de `bluetti_mqtt` (warhammerkid, nhurman, jesherman). Proyecto
 no oficial, sin relación con BLUETTI.
+
+

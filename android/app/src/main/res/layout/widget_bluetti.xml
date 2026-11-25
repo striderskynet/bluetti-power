@@ -70,14 +70,14 @@
 
     <ProgressBar
         android:id="@+id/widget_bar"
-        style="?android:attr/progressBarStyleHorizontal"
+        style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="match_parent"
         android:layout_height="7dp"
         android:layout_marginTop="6dp"
         android:max="100"
         android:progressDrawable="@drawable/widget_battery" />
 
-    <View
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="8dp"

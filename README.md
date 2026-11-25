@@ -240,7 +240,7 @@ En [`android/`](android/README.md) hay una app Android ultraligera (**APK de
 **widgets de pantalla de inicio** con la carga y el consumo de cada estación,
 actualizados con el intervalo que elijas (**1–60 min**).
 
-- APK listo para instalar: [`dist/BluettiWidget-v0.4.apk`](dist/BluettiWidget-v0.4.apk)
+- APK listo para instalar: [`dist/BluettiWidget-v0.4.1.apk`](dist/BluettiWidget-v0.4.1.apk)
 - **Multiestación**: añade varias estaciones y consulta cada una por separado.
 - **Un widget por estación**: al añadir el widget eliges qué equipo muestra.
 - **Widget 4×3 con iconos**: carga, consumo, entrada solar, entrada de red,
@@ -293,3 +293,4 @@ Instrucciones completas (configuración, Home Assistant, diagnóstico):
 - Icono y gráficos dibujados por este proyecto con Pillow/Tkinter.
 
 Licencia del código de este repositorio: MIT.
+
