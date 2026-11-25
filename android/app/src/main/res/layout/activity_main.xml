@@ -132,6 +132,19 @@
                 android:textAllCaps="false"
                 android:textColor="@color/text"
                 android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/btn_about"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/btn_bg"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="Acerca de"
+                android:textAllCaps="false"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout

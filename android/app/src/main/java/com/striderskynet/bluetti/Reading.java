@@ -8,6 +8,7 @@ public final class Reading {
     public int dcOut = -1;
     public int acIn = -1;
     public int dcIn = -1;
+    public int gridVoltage = -1;
     public String deviceType = "";
     public String serialNumber = "";
     public boolean encrypted;

@@ -225,6 +225,7 @@ public final class DeviceStore {
         json.put("dc_out", reading.dcOut);
         json.put("ac_in", reading.acIn);
         json.put("dc_in", reading.dcIn);
+        json.put("grid_voltage", reading.gridVoltage);
         json.put("type", reading.deviceType == null ? "" : reading.deviceType);
         json.put("serial", reading.serialNumber == null ? "" : reading.serialNumber);
         json.put("encrypted", reading.encrypted);
@@ -242,6 +243,7 @@ public final class DeviceStore {
         reading.dcOut = json.optInt("dc_out", -1);
         reading.acIn = json.optInt("ac_in", -1);
         reading.dcIn = json.optInt("dc_in", -1);
+        reading.gridVoltage = json.optInt("grid_voltage", -1);
         reading.deviceType = json.optString("type", "");
         reading.serialNumber = json.optString("serial", "");
         reading.encrypted = json.optBoolean("encrypted", false);

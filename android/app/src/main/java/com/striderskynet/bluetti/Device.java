@@ -65,6 +65,54 @@ public final class Device {
         return displayName();
     }
 
+    /** Capacidad nominal de batería según el modelo (Wh, aproximada). */
+    public int capacityWh() {
+        String model = model().toUpperCase();
+        if (model.startsWith("AC180")) {
+            return 1152;
+        }
+        if (model.startsWith("AC200PL")) {
+            return 2304;
+        }
+        if (model.startsWith("AC200")) {
+            return 2048;
+        }
+        if (model.startsWith("AC300")) {
+            return 3072;
+        }
+        if (model.startsWith("AC70P")) {
+            return 864;
+        }
+        if (model.startsWith("AC70")) {
+            return 768;
+        }
+        if (model.startsWith("AC60P")) {
+            return 504;
+        }
+        if (model.startsWith("AC60")) {
+            return 403;
+        }
+        if (model.startsWith("AC50B")) {
+            return 448;
+        }
+        if (model.startsWith("AC2A")) {
+            return 204;
+        }
+        if (model.startsWith("AP300")) {
+            return 288;
+        }
+        if (model.startsWith("EB3A")) {
+            return 268;
+        }
+        if (model.startsWith("EB70")) {
+            return 716;
+        }
+        if (model.startsWith("EP500")) {
+            return 5100;
+        }
+        return 1152;
+    }
+
     public JSONObject toJson() throws JSONException {
         JSONObject json = new JSONObject();
         json.put("id", id);

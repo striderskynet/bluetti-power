@@ -3,10 +3,9 @@
     android:description="@string/widget_description"
     android:initialLayout="@layout/widget_bluetti"
     android:minWidth="250dp"
-    android:minHeight="110dp"
+    android:minHeight="180dp"
     android:previewImage="@drawable/widget_preview"
     android:previewLayout="@layout/widget_bluetti"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen" />
-

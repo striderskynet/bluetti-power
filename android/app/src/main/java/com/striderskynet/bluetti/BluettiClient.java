@@ -53,6 +53,7 @@ public final class BluettiClient {
     private static final int REG_AC_OUT = 142;
     private static final int REG_DC_IN = 144;
     private static final int REG_AC_IN = 146;
+    private static final int REG_GRID_VOLTAGE = 1314;
 
     private static final String[] MODEL_PREFIXES = {
             "AC2A", "AC50", "AC60", "AC70", "AC180", "AC200", "AC300", "AC500",
@@ -273,6 +274,7 @@ public final class BluettiClient {
         reading.dcOut = 15;
         reading.acIn = 0;
         reading.dcIn = hash % 60;
+        reading.gridVoltage = 0;
         reading.deviceType = device.model();
         reading.serialNumber = "DEMO" + (hash % 100000);
         reading.encrypted = true;
@@ -321,6 +323,12 @@ public final class BluettiClient {
         reading.acOut = Modbus.u16(readRegister(REG_AC_OUT, 1), 0);
         reading.dcIn = Modbus.u16(readRegister(REG_DC_IN, 1), 0);
         reading.acIn = Modbus.u16(readRegister(REG_AC_IN, 1), 0);
+        try {
+            byte[] gridBody = readRegister(REG_GRID_VOLTAGE, 1);
+            reading.gridVoltage = Math.round(Modbus.u16(gridBody, 0) / 10f);
+        } catch (IOException ignored) {
+            reading.gridVoltage = -1;
+        }
         reading.address = address;
         reading.time = System.currentTimeMillis();
     }

@@ -1,6 +1,6 @@
 # BluettiWidget — app Android + widgets para estaciones BLUETTI
 
-App Android **ultraligera** (APK de ~120 KB, sin dependencias ni Google Play
+App Android **ultraligera** (APK de ~130 KB, sin dependencias ni Google Play
 Services) que se conecta por Bluetooth LE a una o varias estaciones BLUETTI
 (AC180P y familia V2), y muestra su estado en la app y en **widgets** de la
 pantalla de inicio.
@@ -11,11 +11,14 @@ pantalla de inicio.
   puedes tener varios widgets (uno por equipo).
 - **Intervalo configurable** de actualización automática: **1, 2, 5, 10, 15,
   30 o 60 minutos** (mínimo 1 minuto).
-- **Widget rediseñado**: barra de batería con degradado, % grande, consumo,
-  estado, desglose AC/DC/entrada y antigüedad de la lectura.
+- **Widget completo (4×3) con iconos**: además de carga, consumo, estado y
+  barra de batería, muestra **entrada solar, entrada de red, voltaje de red,
+  salida AC, salida DC** y **energía restante/total (Wh)**.
 - **Más información por estación**: modelo, nº de serie, dirección BLE, canal
-  cifrado, salida AC/DC, entrada de red/solar, estado y última lectura.
-- Renombrar y quitar estaciones, modo demo, registro con **Compartir**.
+  cifrado, salida AC/DC, entrada de red/solar, voltaje de red, capacidad y
+  energía restante, estado y última lectura.
+- Renombrar y quitar estaciones, **Acerca de**, modo demo, registro con
+  **Compartir**.
 - Servicio en primer plano para que las actualizaciones no se duerman, con
   notificación-resumen y acciones *Actualizar/Detener*.
 
@@ -25,7 +28,7 @@ Sin nube, sin cuentas, sin telemetría. Todo se queda en el móvil.
 
 ## Instalación
 
-1. Descarga `dist/BluettiWidget-v0.3.apk` (o desde el release de GitHub) y
+1. Descarga `dist/BluettiWidget-v0.4.apk` (o desde el release de GitHub) y
    ábrelo en el móvil; acepta **instalar apps de origen desconocido**.
 2. Concede permisos: **Dispositivos cercanos**, **Notificaciones** y, en
    Android 11 o inferior, **Ubicación**.
@@ -64,8 +67,22 @@ tardará unos segundos más por equipo.
 
 1. Mantén pulsado el escritorio → **Widgets** → **Bluetti**.
 2. Elige **qué estación** muestra ese widget (puedes añadir uno por estación).
-3. El widget se actualiza con el intervalo configurado. Tócalo para abrir la
-   app.
+3. El widget (4×3, con iconos) muestra:
+   - **% de carga** con barra de batería y color según nivel.
+   - **Consumo total** (salida AC + DC).
+   - **Entrada solar** (W) y **entrada de red** (W).
+   - **Voltaje de red** (V) cuando hay entrada de red activa.
+   - **Salida AC** y **salida DC** (W).
+   - **Energía restante** (aprox.) y capacidad total (Wh).
+   - Estado, nombre de la estación y antigüedad de la lectura.
+4. Se actualiza con el intervalo configurado. Tócalo para abrir la app.
+
+### Más datos y "Acerca de"
+
+El botón **Datos** de cada estación muestra modelo, nº de serie, dirección BLE,
+cifrado, salidas/entradas, **voltaje de red**, **capacidad** y **energía
+restante**, estado y última lectura. El botón **Acerca de** muestra la versión,
+la autoría y los créditos del proyecto.
 
 ### Modo demo
 
@@ -87,6 +104,9 @@ simulados por estación).
 
 ## Actualizar desde versiones anteriores
 
+- **v0.4**: el widget (4×3) añade entrada solar, entrada de red, voltaje de red,
+  salidas AC/DC y energía restante/total con iconos; botón **Acerca de**.
+  La energía restante es aproximada (capacidad del modelo × % de batería).
 - **v0.3**: multiestación, widgets por estación, intervalo 1–60 min, widget
   rediseñado, detalles con nº de serie. La estación de la v0.2 se migra
   automáticamente; los widgets antiguos se asignan a la primera estación

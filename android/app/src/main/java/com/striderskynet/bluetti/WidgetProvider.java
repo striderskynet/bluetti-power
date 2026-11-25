@@ -14,7 +14,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/** Widget por estación: carga, consumo, estado, desglose y última lectura. */
+/** Widget por estación: carga, consumo, entradas, salidas, voltaje y energía. */
 public final class WidgetProvider extends AppWidgetProvider {
 
     @Override
@@ -85,16 +85,24 @@ public final class WidgetProvider extends AppWidgetProvider {
         if (device == null) {
             views.setTextViewText(R.id.widget_name, "Bluetti");
             views.setTextViewText(R.id.widget_state, "sin estación");
+            views.setTextColor(R.id.widget_state, context.getColor(R.color.bad));
             views.setTextViewText(R.id.widget_pct, "—");
             views.setTextViewText(R.id.widget_w, "—");
             views.setTextViewText(R.id.widget_updated, "");
-            views.setTextViewText(R.id.widget_breakdown, "Añade una estación en la app");
+            views.setTextViewText(R.id.widget_solar_value, "—");
+            views.setTextViewText(R.id.widget_grid_value, "—");
+            views.setTextViewText(R.id.widget_voltage_value, "—");
+            views.setTextViewText(R.id.widget_ac_value, "—");
+            views.setTextViewText(R.id.widget_dc_value, "—");
+            views.setTextViewText(R.id.widget_energy_value, "—");
+            views.setTextViewText(R.id.widget_energy_label, "restante / total");
             views.setProgressBar(R.id.widget_bar, 100, 0, false);
             return views;
         }
 
         Reading reading = DeviceStore.state(context, device.id);
         boolean ok = reading.ok();
+        int capacity = device.capacityWh();
         views.setTextViewText(R.id.widget_name, device.displayName());
 
         int pctColor;
@@ -115,17 +123,32 @@ public final class WidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_state, reading.state() + (reading.demo ? " · demo" : ""));
             views.setTextColor(R.id.widget_state,
                     context.getColor(reading.demo ? R.color.warn : R.color.accent));
-            views.setTextViewText(R.id.widget_breakdown,
-                    "AC " + Math.max(0, reading.acOut) + " W · DC " + Math.max(0, reading.dcOut)
-                            + " W · entrada " + reading.totalIn() + " W");
         } else {
             views.setTextViewText(R.id.widget_state, reading.error != null ? "sin conexión" : "sin datos");
             views.setTextColor(R.id.widget_state, context.getColor(R.color.bad));
-            views.setTextViewText(R.id.widget_breakdown,
-                    reading.error != null ? reading.error : "sin datos todavía");
         }
+
+        // Entradas / salidas
+        views.setTextViewText(R.id.widget_solar_value,
+                ok ? Math.max(0, reading.dcIn) + " W" : "—");
+        views.setTextViewText(R.id.widget_grid_value,
+                ok ? Math.max(0, reading.acIn) + " W" : "—");
+        boolean showVoltage = ok && reading.acIn > 5 && reading.gridVoltage > 0;
+        views.setTextViewText(R.id.widget_voltage_value,
+                showVoltage ? reading.gridVoltage + " V" : "—");
+        views.setTextViewText(R.id.widget_ac_value,
+                ok ? Math.max(0, reading.acOut) + " W" : "—");
+        views.setTextViewText(R.id.widget_dc_value,
+                ok ? Math.max(0, reading.dcOut) + " W" : "—");
+
+        int remainingWh = ok ? Math.round(reading.percent * capacity / 100f) : -1;
+        views.setTextViewText(R.id.widget_energy_value,
+                remainingWh >= 0 ? remainingWh + " Wh" : "—");
+        views.setTextViewText(R.id.widget_energy_label, "de " + capacity + " Wh");
+
         views.setTextViewText(R.id.widget_updated, reading.time > 0 ? timeAgo(reading.time) : "");
-        views.setProgressBar(R.id.widget_bar, 100, ok ? Math.max(0, Math.min(100, reading.percent)) : 0, false);
+        int progress = ok ? Math.max(0, Math.min(100, reading.percent)) : 0;
+        views.setProgressBar(R.id.widget_bar, 100, progress, false);
         return views;
     }
 

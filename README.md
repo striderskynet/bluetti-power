@@ -236,19 +236,20 @@ Versiones de dependencias probadas: `bluetti-bt-lib 0.1.8`, `bleak 3.1.0`,
 ## 8. Versión Android (app + widgets)
 
 En [`android/`](android/README.md) hay una app Android ultraligera (**APK de
-~120 KB, sin dependencias**) que hace lo mismo desde el móvil y añade
+~130 KB, sin dependencias**) que hace lo mismo desde el móvil y añade
 **widgets de pantalla de inicio** con la carga y el consumo de cada estación,
 actualizados con el intervalo que elijas (**1–60 min**).
 
-- APK listo para instalar: [`dist/BluettiWidget-v0.3.apk`](dist/BluettiWidget-v0.3.apk)
+- APK listo para instalar: [`dist/BluettiWidget-v0.4.apk`](dist/BluettiWidget-v0.4.apk)
 - **Multiestación**: añade varias estaciones y consulta cada una por separado.
 - **Un widget por estación**: al añadir el widget eliges qué equipo muestra.
-- **Widget rediseñado**: barra de batería, % grande, consumo, estado,
-  desglose AC/DC/entrada y antigüedad de la lectura.
+- **Widget 4×3 con iconos**: carga, consumo, entrada solar, entrada de red,
+  voltaje de red, salidas AC/DC, energía restante/total (Wh), estado y barra
+  de batería.
 - **Más información**: modelo, nº de serie, dirección BLE, canal cifrado,
-  entrada de red/solar, estado y última lectura.
-- Intervalo configurable (mínimo 1 min), renombrar/quitar estaciones, modo demo
-  y registro con **Compartir**.
+  voltaje de red, capacidad y energía restante, última lectura.
+- Intervalo configurable (mínimo 1 min), renombrar/quitar estaciones, **Acerca
+  de**, modo demo y registro con **Compartir**.
 - Probada contra un AC180P real (canal cifrado). El protocolo está portado a
   Java y validado con una autoprueba que se ejecuta al compilar.
 - Instrucciones completas, límites y diagnóstico: [`android/README.md`](android/README.md).

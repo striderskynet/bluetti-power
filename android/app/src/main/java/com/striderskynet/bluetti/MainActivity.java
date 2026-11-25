@@ -33,7 +33,7 @@ import java.util.Locale;
 /** Pantalla principal: lista de estaciones, ajustes y diagnóstico. */
 public final class MainActivity extends Activity {
 
-    public static final String APP_VERSION = "0.3";
+    public static final String APP_VERSION = "0.4";
     private static final int REQUEST_PERMISSIONS = 10;
     private static final int[] INTERVAL_SECONDS = {60, 120, 300, 600, 900, 1800, 3600};
 
@@ -44,6 +44,7 @@ public final class MainActivity extends Activity {
     private Button btnAdd;
     private Button btnLogs;
     private Button btnDemo;
+    private Button btnAbout;
     private LinearLayout stationsContainer;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -70,6 +71,7 @@ public final class MainActivity extends Activity {
         btnAdd = findViewById(R.id.btn_add);
         btnLogs = findViewById(R.id.btn_logs);
         btnDemo = findViewById(R.id.btn_demo);
+        btnAbout = findViewById(R.id.btn_about);
         stationsContainer = findViewById(R.id.stations_container);
 
         appVersion.setText("v" + APP_VERSION);
@@ -99,6 +101,12 @@ public final class MainActivity extends Activity {
             @Override
             public void onClick(View view) {
                 toggleDemo();
+            }
+        });
+        btnAbout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showAbout();
             }
         });
 
@@ -219,8 +227,10 @@ public final class MainActivity extends Activity {
         watts.setText(ok ? formatWatts(reading.totalOut()) : "—");
         updated.setText(reading.time > 0 ? timeAgo(reading.time) : "");
         if (ok) {
-            breakdown.setText("AC " + Math.max(0, reading.acOut) + " W · DC "
-                    + Math.max(0, reading.dcOut) + " W · entrada " + reading.totalIn() + " W");
+            int remainingWh = Math.round(reading.percent * device.capacityWh() / 100f);
+            breakdown.setText("AC " + Math.max(0, reading.acOut) + " · DC "
+                    + Math.max(0, reading.dcOut) + " · in " + reading.totalIn()
+                    + " · " + remainingWh + " Wh");
         } else {
             breakdown.setText(reading.error != null ? reading.error : getString(R.string.no_data));
         }
@@ -406,6 +416,14 @@ public final class MainActivity extends Activity {
             text.append("Entrada AC: ").append(Math.max(0, reading.acIn)).append(" W\n");
             text.append("Entrada solar: ").append(Math.max(0, reading.dcIn)).append(" W\n");
             text.append("Entrada total: ").append(reading.totalIn()).append(" W\n");
+            text.append("Voltaje de red: ").append(
+                    reading.acIn > 5 && reading.gridVoltage > 0
+                            ? reading.gridVoltage + " V" : "—").append('\n');
+            int capacity = device.capacityWh();
+            text.append("Capacidad batería: ").append(capacity).append(" Wh\n");
+            text.append("Energía restante: ")
+                    .append(Math.round(reading.percent * capacity / 100f))
+                    .append(" Wh (aprox.)\n");
             text.append("Estado: ").append(reading.state()).append('\n');
             text.append("Última lectura: ").append(fullTime(reading.time))
                     .append(" (").append(timeAgo(reading.time)).append(")\n");
@@ -528,6 +546,21 @@ public final class MainActivity extends Activity {
                 });
             }
         }, "bluetti-refresh-all").start();
+    }
+
+    private void showAbout() {
+        new AlertDialog.Builder(this)
+                .setTitle("Acerca de Bluetti")
+                .setMessage("Bluetti v" + APP_VERSION + "\n\n"
+                        + "Hecho por Nesty.\n\n"
+                        + "App no oficial para estaciones BLUETTI (AC180P y familia V2), "
+                        + "de solo lectura.\n"
+                        + "Protocolo BLE/MODBUS y handshake cifrado basados en "
+                        + "bluetti-bt-lib (MIT, Patrick762) y bluetti_mqtt "
+                        + "(warhammerkid, nhurman, jesherman).\n\n"
+                        + "Sin relación con BLUETTI.")
+                .setPositiveButton(R.string.close, null)
+                .show();
     }
 
     private void showLogs() {
