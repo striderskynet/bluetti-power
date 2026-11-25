@@ -4,48 +4,57 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/** Pantalla principal: estado, búsqueda de equipo y activación del widget/servicio. */
+/** Pantalla principal: lista de estaciones, ajustes y diagnóstico. */
 public final class MainActivity extends Activity {
 
-    public static final String APP_VERSION = "0.2";
+    public static final String APP_VERSION = "0.3";
     private static final int REQUEST_PERMISSIONS = 10;
+    private static final int[] INTERVAL_SECONDS = {60, 120, 300, 600, 900, 1800, 3600};
 
-    private TextView deviceLine;
-    private TextView appVersion;
-    private TextView statusPct;
-    private TextView statusW;
-    private TextView statusState;
-    private TextView statusUpdated;
     private TextView statusHint;
-    private Button btnScan;
-    private Button btnRefresh;
+    private TextView appVersion;
+    private Spinner intervalSpinner;
     private Button btnService;
-    private Button btnDemo;
+    private Button btnAdd;
     private Button btnLogs;
+    private Button btnDemo;
+    private LinearLayout stationsContainer;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean busy;
+    private boolean spinnerInitialized;
 
     private final Runnable ticker = new Runnable() {
         @Override
         public void run() {
-            updateUi();
-            handler.postDelayed(this, 2000);
+            renderStations();
+            handler.postDelayed(this, 3000);
         }
     };
 
@@ -54,58 +63,56 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        deviceLine = findViewById(R.id.device_line);
-        appVersion = findViewById(R.id.app_version);
-        appVersion.setText("v" + APP_VERSION);
-        statusPct = findViewById(R.id.status_pct);
-        statusW = findViewById(R.id.status_w);
-        statusState = findViewById(R.id.status_state);
-        statusUpdated = findViewById(R.id.status_updated);
         statusHint = findViewById(R.id.status_hint);
-        btnScan = findViewById(R.id.btn_scan);
-        btnRefresh = findViewById(R.id.btn_refresh);
+        appVersion = findViewById(R.id.app_version);
+        intervalSpinner = findViewById(R.id.interval_spinner);
         btnService = findViewById(R.id.btn_service);
-        btnDemo = findViewById(R.id.btn_demo);
+        btnAdd = findViewById(R.id.btn_add);
         btnLogs = findViewById(R.id.btn_logs);
+        btnDemo = findViewById(R.id.btn_demo);
+        stationsContainer = findViewById(R.id.stations_container);
 
-        btnScan.setOnClickListener(new android.view.View.OnClickListener() {
+        appVersion.setText("v" + APP_VERSION);
+        Logs.log(this, "Bluetti v" + APP_VERSION + " iniciada");
+
+        setupIntervalSpinner();
+
+        btnAdd.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(android.view.View view) {
+            public void onClick(View view) {
                 startScan();
             }
         });
-        btnRefresh.setOnClickListener(new android.view.View.OnClickListener() {
+        btnService.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(android.view.View view) {
-                refreshNow();
-            }
-        });
-        btnService.setOnClickListener(new android.view.View.OnClickListener() {
-            @Override
-            public void onClick(android.view.View view) {
+            public void onClick(View view) {
                 toggleService();
             }
         });
-        btnLogs.setOnClickListener(new android.view.View.OnClickListener() {
+        btnLogs.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(android.view.View view) {
+            public void onClick(View view) {
                 showLogs();
             }
         });
-        btnDemo.setOnClickListener(new android.view.View.OnClickListener() {
+        btnDemo.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(android.view.View view) {
+            public void onClick(View view) {
                 toggleDemo();
             }
         });
 
         ensurePermissions();
-        updateUi();
+        updateButtons();
+        renderStations();
+        WidgetProvider.updateAll(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        updateButtons();
+        renderStations();
         handler.post(ticker);
     }
 
@@ -115,39 +122,147 @@ public final class MainActivity extends Activity {
         super.onPause();
     }
 
-    // ------------------------------------------------------------------ UI
+    // ----------------------------------------------------------- ajustes
 
-    private void updateUi() {
-        Reading reading = Prefs.loadReading(this);
-        boolean configured = !Prefs.address(this).isEmpty();
+    private void setupIntervalSpinner() {
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this, R.array.interval_options, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        intervalSpinner.setAdapter(adapter);
 
-        String name = Prefs.name(this);
-        deviceLine.setText(configured
-                ? (name.isEmpty() ? Prefs.address(this) : name + "\n" + Prefs.address(this))
-                : getString(R.string.no_device));
+        int seconds = DeviceStore.intervalSeconds(this);
+        int index = 0;
+        for (int i = 0; i < INTERVAL_SECONDS.length; i++) {
+            if (INTERVAL_SECONDS[i] == seconds) {
+                index = i;
+                break;
+            }
+        }
+        intervalSpinner.setSelection(index, false);
+        intervalSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (!spinnerInitialized) {
+                    return;
+                }
+                int seconds = INTERVAL_SECONDS[position];
+                if (seconds == DeviceStore.intervalSeconds(MainActivity.this)) {
+                    return;
+                }
+                DeviceStore.setIntervalSeconds(MainActivity.this, seconds);
+                statusHint.setText("Intervalo de actualización: " + (seconds / 60) + " min");
+                if (DeviceStore.serviceEnabled(MainActivity.this)) {
+                    PollService.refresh(MainActivity.this);
+                }
+            }
 
-        if (reading.ok()) {
-            statusPct.setText(String.valueOf(reading.percent));
-            statusPct.setTextColor(getColor(bandColor(reading.percent)));
-            statusW.setText(String.format(Locale.getDefault(), "%d W", reading.totalOut()));
-            statusState.setText(reading.state()
-                    + (reading.encrypted ? " · BLE cifrado" : "")
-                    + (reading.demo ? " · demo" : ""));
-            statusUpdated.setText("Actualizado " + relativeTime(reading.time));
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                spinnerInitialized = true;
+            }
+        }, 700);
+    }
+
+    private void updateButtons() {
+        btnService.setText(DeviceStore.serviceEnabled(this)
+                ? R.string.service_disable : R.string.service_enable);
+        btnDemo.setText(DeviceStore.isDemo(this) ? R.string.demo_disable : R.string.demo_enable);
+    }
+
+    // --------------------------------------------------------- estaciones
+
+    private void renderStations() {
+        List<Device> devices = DeviceStore.devices(this);
+        stationsContainer.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(this);
+        if (devices.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(R.string.no_stations);
+            empty.setTextColor(getColor(R.color.muted));
+            empty.setTextSize(12f);
+            empty.setPadding(0, 20, 0, 20);
+            stationsContainer.addView(empty);
+            return;
+        }
+        for (Device device : devices) {
+            View card = inflater.inflate(R.layout.item_station, stationsContainer, false);
+            bindCard(card, device);
+            stationsContainer.addView(card);
+        }
+    }
+
+    private void bindCard(View card, final Device device) {
+        Reading reading = DeviceStore.state(this, device.id);
+        TextView name = card.findViewById(R.id.item_name);
+        TextView state = card.findViewById(R.id.item_state);
+        TextView address = card.findViewById(R.id.item_address);
+        TextView pct = card.findViewById(R.id.item_pct);
+        TextView watts = card.findViewById(R.id.item_w);
+        TextView updated = card.findViewById(R.id.item_updated);
+        TextView breakdown = card.findViewById(R.id.item_breakdown);
+
+        name.setText(device.displayName());
+        String model = reading.deviceType != null && !reading.deviceType.isEmpty()
+                ? reading.deviceType : device.model();
+        address.setText((model.isEmpty() ? "" : model + " · ") + device.address);
+
+        boolean ok = reading.ok();
+        state.setText(ok ? (reading.state() + (reading.demo ? " · demo" : "")) : "sin conexión");
+        state.setTextColor(getColor(stateColor(reading)));
+        pct.setText(ok ? String.valueOf(reading.percent) : "—");
+        pct.setTextColor(getColor(ok ? bandColor(reading.percent) : R.color.muted));
+        watts.setText(ok ? formatWatts(reading.totalOut()) : "—");
+        updated.setText(reading.time > 0 ? timeAgo(reading.time) : "");
+        if (ok) {
+            breakdown.setText("AC " + Math.max(0, reading.acOut) + " W · DC "
+                    + Math.max(0, reading.dcOut) + " W · entrada " + reading.totalIn() + " W");
         } else {
-            statusPct.setText("—");
-            statusPct.setTextColor(getColor(R.color.muted));
-            statusW.setText("—");
-            statusState.setText(reading.error != null ? reading.error : getString(R.string.no_data));
-            statusUpdated.setText(reading.time > 0 ? "Última lectura " + relativeTime(reading.time) : "");
+            breakdown.setText(reading.error != null ? reading.error : getString(R.string.no_data));
         }
 
-        btnRefresh.setEnabled((configured || Prefs.isDemo(this)) && !busy);
-        btnScan.setEnabled(!busy);
-        btnService.setText(Prefs.enabled(this)
-                ? R.string.service_disable
-                : R.string.service_enable);
-        btnDemo.setText(Prefs.isDemo(this) ? R.string.demo_disable : R.string.demo_enable);
+        card.findViewById(R.id.item_read).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                readDevice(device);
+            }
+        });
+        card.findViewById(R.id.item_details).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showDetails(device);
+            }
+        });
+        card.findViewById(R.id.item_rename).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showRename(device);
+            }
+        });
+        card.findViewById(R.id.item_remove).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                confirmRemove(device);
+            }
+        });
+    }
+
+    private int stateColor(Reading reading) {
+        if (!reading.ok()) {
+            return R.color.bad;
+        }
+        String state = reading.state();
+        if (state.contains("cargando") || state.contains("entrada")) {
+            return R.color.accent;
+        }
+        if (state.contains("descargando")) {
+            return R.color.good;
+        }
+        return R.color.muted;
     }
 
     private int bandColor(int percent) {
@@ -160,7 +275,11 @@ public final class MainActivity extends Activity {
         return R.color.bad;
     }
 
-    private static String relativeTime(long timestamp) {
+    private static String formatWatts(int watts) {
+        return String.format(Locale.getDefault(), "%d W", watts);
+    }
+
+    private static String timeAgo(long timestamp) {
         long seconds = Math.max(0, (System.currentTimeMillis() - timestamp) / 1000);
         if (seconds < 60) {
             return "hace " + seconds + " s";
@@ -171,7 +290,11 @@ public final class MainActivity extends Activity {
         return "hace " + (seconds / 3600) + " h";
     }
 
-    // ----------------------------------------------------------- acciones
+    private static String fullTime(long timestamp) {
+        return new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(new Date(timestamp));
+    }
+
+    // --------------------------------------------------------- acciones
 
     private void startScan() {
         if (!hasBluetoothPermissions()) {
@@ -183,7 +306,6 @@ public final class MainActivity extends Activity {
         }
         busy = true;
         statusHint.setText(R.string.scanning);
-        updateUi();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -200,19 +322,18 @@ public final class MainActivity extends Activity {
                     @Override
                     public void run() {
                         busy = false;
-                        updateUi();
                         if (failure != null) {
                             statusHint.setText("Error al escanear: " + failure);
                             return;
                         }
-                        showDevices(found);
+                        showScanResults(found);
                     }
                 });
             }
         }, "bluetti-scan").start();
     }
 
-    private void showDevices(List<BluettiClient.ScanHit> hits) {
+    private void showScanResults(List<BluettiClient.ScanHit> hits) {
         if (hits == null || hits.isEmpty()) {
             statusHint.setText(R.string.scan_empty);
             return;
@@ -223,45 +344,37 @@ public final class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle(R.string.choose_device)
-                .setItems(labels, new android.content.DialogInterface.OnClickListener() {
+                .setItems(labels, new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(android.content.DialogInterface dialog, int which) {
+                    public void onClick(DialogInterface dialog, int which) {
                         BluettiClient.ScanHit hit = hits.get(which);
-                        Prefs.setDevice(MainActivity.this, hit.address, hit.name, hit.encryptedHint);
-                        statusHint.setText("Equipo guardado: " + hit.name);
-                        updateUi();
-                        refreshNow();
+                        Device device = DeviceStore.addOrUpdate(MainActivity.this,
+                                hit.address, hit.name, hit.encryptedHint);
+                        statusHint.setText("Estación añadida: " + device.displayName());
+                        renderStations();
+                        readDevice(device);
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
-    private void refreshNow() {
-        if (Prefs.address(this).isEmpty() && !Prefs.isDemo(this)) {
-            statusHint.setText(R.string.no_device);
-            return;
-        }
-        if (!hasBluetoothPermissions()) {
-            ensurePermissions();
-            return;
-        }
+    private void readDevice(final Device device) {
         if (busy) {
             return;
         }
         busy = true;
-        statusHint.setText(R.string.reading);
-        updateUi();
+        statusHint.setText("Leyendo " + device.displayName() + "…");
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final Reading reading = BluettiClient.readNow(MainActivity.this);
-                WidgetProvider.updateAll(MainActivity.this);
+                final Reading reading = BluettiClient.readNow(MainActivity.this, device);
+                WidgetProvider.updateForDevice(MainActivity.this, device.id);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         busy = false;
-                        updateUi();
+                        renderStations();
                         if (reading.ok()) {
                             statusHint.setText("Lectura correcta: " + reading.percent + "% · "
                                     + reading.totalOut() + " W");
@@ -274,12 +387,100 @@ public final class MainActivity extends Activity {
         }, "bluetti-read").start();
     }
 
+    private void showDetails(final Device device) {
+        Reading reading = DeviceStore.state(this, device.id);
+        StringBuilder text = new StringBuilder();
+        String model = reading.deviceType != null && !reading.deviceType.isEmpty()
+                ? reading.deviceType : device.model();
+        text.append("Modelo: ").append(model.isEmpty() ? "—" : model).append('\n');
+        text.append("Nº de serie: ").append(
+                reading.serialNumber == null || reading.serialNumber.isEmpty()
+                        ? "—" : reading.serialNumber).append('\n');
+        text.append("Dirección BLE: ").append(device.address).append('\n');
+        text.append("Conexión: ").append(reading.encrypted ? "cifrada" : "sin cifrar").append('\n');
+        if (reading.ok()) {
+            text.append("Batería: ").append(reading.percent).append(" %\n");
+            text.append("Salida AC: ").append(Math.max(0, reading.acOut)).append(" W\n");
+            text.append("Salida DC: ").append(Math.max(0, reading.dcOut)).append(" W\n");
+            text.append("Salida total: ").append(reading.totalOut()).append(" W\n");
+            text.append("Entrada AC: ").append(Math.max(0, reading.acIn)).append(" W\n");
+            text.append("Entrada solar: ").append(Math.max(0, reading.dcIn)).append(" W\n");
+            text.append("Entrada total: ").append(reading.totalIn()).append(" W\n");
+            text.append("Estado: ").append(reading.state()).append('\n');
+            text.append("Última lectura: ").append(fullTime(reading.time))
+                    .append(" (").append(timeAgo(reading.time)).append(")\n");
+            text.append("Modo demo: ").append(reading.demo ? "sí" : "no");
+        } else {
+            text.append("Estado: sin conexión\n");
+            text.append("Error: ").append(reading.error == null ? "sin datos" : reading.error);
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(device.displayName())
+                .setMessage(text.toString())
+                .setPositiveButton(R.string.close, null)
+                .setNeutralButton("Leer ahora", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        readDevice(device);
+                    }
+                })
+                .show();
+    }
+
+    private void showRename(final Device device) {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setText(device.alias);
+        input.setHint(device.model());
+        new AlertDialog.Builder(this)
+                .setTitle("Nombre de la estación")
+                .setView(input)
+                .setPositiveButton("Guardar", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        DeviceStore.rename(MainActivity.this, device.id,
+                                input.getText().toString().trim());
+                        WidgetProvider.updateForDevice(MainActivity.this, device.id);
+                        renderStations();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void confirmRemove(final Device device) {
+        new AlertDialog.Builder(this)
+                .setTitle("Quitar estación")
+                .setMessage("¿Quitar «" + device.displayName() + "» de la lista?")
+                .setPositiveButton("Quitar", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        DeviceStore.remove(MainActivity.this, device.id);
+                        WidgetProvider.updateAll(MainActivity.this);
+                        renderStations();
+                        statusHint.setText("Estación eliminada");
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void toggleService() {
-        if (Prefs.enabled(this)) {
+        if (DeviceStore.serviceEnabled(this)) {
             PollService.stop(this);
-            Prefs.setEnabled(this, false);
+            DeviceStore.setServiceEnabled(this, false);
             statusHint.setText(R.string.service_stopped);
-            updateUi();
+            updateButtons();
+            return;
+        }
+        if (DeviceStore.devices(this).isEmpty()) {
+            statusHint.setText(R.string.no_stations);
+            return;
+        }
+        if (!hasBluetoothPermissions()) {
+            ensurePermissions();
+            statusHint.setText(R.string.permissions_missing);
             return;
         }
         if (Build.VERSION.SDK_INT >= 33
@@ -288,29 +489,45 @@ public final class MainActivity extends Activity {
             statusHint.setText(R.string.notifications_needed);
             return;
         }
-        if (!Prefs.isDemo(this) && !hasBluetoothPermissions()) {
-            ensurePermissions();
-            statusHint.setText(R.string.permissions_missing);
-            return;
-        }
         try {
             PollService.start(this);
-            Prefs.setEnabled(this, true);
+            DeviceStore.setServiceEnabled(this, true);
             statusHint.setText(R.string.service_started);
         } catch (Exception exc) {
             statusHint.setText("No se pudo iniciar el servicio: " + exc.getMessage());
         }
-        updateUi();
+        updateButtons();
     }
 
     private void toggleDemo() {
-        boolean demo = !Prefs.isDemo(this);
-        Prefs.setDemo(this, demo);
+        boolean demo = !DeviceStore.isDemo(this);
+        DeviceStore.setDemo(this, demo);
         statusHint.setText(demo ? R.string.demo_on : R.string.demo_off);
-        updateUi();
+        updateButtons();
         if (demo) {
-            refreshNow();
+            refreshAllDevices();
+        } else {
+            renderStations();
         }
+    }
+
+    private void refreshAllDevices() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                List<Device> devices = DeviceStore.devices(MainActivity.this);
+                for (Device device : devices) {
+                    BluettiClient.readNow(MainActivity.this, device);
+                    WidgetProvider.updateForDevice(MainActivity.this, device.id);
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        renderStations();
+                    }
+                });
+            }
+        }, "bluetti-refresh-all").start();
     }
 
     private void showLogs() {
@@ -326,15 +543,15 @@ public final class MainActivity extends Activity {
                 .setTitle(R.string.logs)
                 .setView(scroll)
                 .setPositiveButton(R.string.close, null)
-                .setNeutralButton(R.string.share_logs, new android.content.DialogInterface.OnClickListener() {
+                .setNeutralButton(R.string.share_logs, new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(android.content.DialogInterface dialog, int which) {
+                    public void onClick(DialogInterface dialog, int which) {
                         shareLogs();
                     }
                 })
-                .setNegativeButton(R.string.clear_logs, new android.content.DialogInterface.OnClickListener() {
+                .setNegativeButton(R.string.clear_logs, new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(android.content.DialogInterface dialog, int which) {
+                    public void onClick(DialogInterface dialog, int which) {
                         Logs.clear(MainActivity.this);
                         statusHint.setText("Registro borrado");
                     }
@@ -350,7 +567,7 @@ public final class MainActivity extends Activity {
         startActivity(Intent.createChooser(send, getString(R.string.share_logs)));
     }
 
-    // -------------------------------------------------------- permisos
+    // --------------------------------------------------------- permisos
 
     private List<String> missingPermissions() {
         List<String> needed = new ArrayList<>();
@@ -391,7 +608,7 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_PERMISSIONS) {
             statusHint.setText(hasBluetoothPermissions() ? "" : getString(R.string.permissions_missing));
-            updateUi();
+            updateButtons();
         }
     }
 }

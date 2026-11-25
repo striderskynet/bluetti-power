@@ -12,7 +12,7 @@ public final class BootReceiver extends BroadcastReceiver {
         if (intent == null || !Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             return;
         }
-        if (!Prefs.enabled(context)) {
+        if (!DeviceStore.serviceEnabled(context)) {
             return;
         }
         try {

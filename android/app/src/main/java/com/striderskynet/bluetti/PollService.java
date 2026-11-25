@@ -11,15 +11,15 @@ import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Servicio en primer plano que lee el equipo cada 5 minutos y actualiza el widget.
- *
- * <p>Se usa un servicio (y no AlarmManager/WorkManager) porque es la única forma
- * fiable de mantener una actualización de 5 minutos sin restricciones de Doze.</p>
+ * Servicio en primer plano que lee todas las estaciones configuradas cada
+ * N segundos (mínimo 60) y actualiza notificación y widgets.
  */
 public final class PollService extends Service {
 
@@ -27,31 +27,29 @@ public final class PollService extends Service {
     public static final String ACTION_STOP = "com.striderskynet.bluetti.STOP";
     public static final String ACTION_REFRESH = "com.striderskynet.bluetti.REFRESH";
 
-    public static final long INTERVAL_MINUTES = 5L;
     private static final String CHANNEL_ID = "bluetti";
     private static final int NOTIFICATION_ID = 1;
 
     private ScheduledExecutorService executor;
-    private boolean scheduled;
+    private final Object scheduleLock = new Object();
+    private ScheduledFuture<?> pending;
     private volatile boolean polling;
+    private volatile boolean refreshRequested;
 
     public static void start(Context context) {
-        Intent intent = new Intent(context, PollService.class).setAction(ACTION_START);
-        startCompat(context, intent);
+        startCompat(context, new Intent(context, PollService.class).setAction(ACTION_START));
     }
 
     public static void stop(Context context) {
-        Intent intent = new Intent(context, PollService.class).setAction(ACTION_STOP);
         try {
-            context.startService(intent);
+            context.startService(new Intent(context, PollService.class).setAction(ACTION_STOP));
         } catch (Exception ignored) {
-            // si no está en ejecución no hay nada que parar
+            // no estaba en ejecución
         }
     }
 
     public static void refresh(Context context) {
-        Intent intent = new Intent(context, PollService.class).setAction(ACTION_REFRESH);
-        startCompat(context, intent);
+        startCompat(context, new Intent(context, PollService.class).setAction(ACTION_REFRESH));
     }
 
     private static void startCompat(Context context, Intent intent) {
@@ -80,23 +78,24 @@ public final class PollService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_STOP.equals(action)) {
-            Prefs.setEnabled(this, false);
+            DeviceStore.setServiceEnabled(this, false);
             stopForeground(true);
             stopSelf();
             return START_NOT_STICKY;
         }
 
-        Prefs.setEnabled(this, true);
+        DeviceStore.setServiceEnabled(this, true);
         startForegroundCompat();
         if (ACTION_REFRESH.equals(action)) {
-            runPoll();
+            refreshNow();
+        } else {
+            schedule(0L);
         }
-        schedule();
         return START_STICKY;
     }
 
     private void startForegroundCompat() {
-        Notification notification = buildNotification(Prefs.loadReading(this));
+        Notification notification = buildNotification(DeviceStore.devices(this));
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
         } else {
@@ -104,74 +103,128 @@ public final class PollService extends Service {
         }
     }
 
-    private synchronized void schedule() {
-        if (scheduled || executor == null || executor.isShutdown()) {
-            return;
-        }
-        scheduled = true;
-        executor.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                runPoll();
+    private void schedule(long delayMs) {
+        synchronized (scheduleLock) {
+            if (executor == null || executor.isShutdown()) {
+                return;
             }
-        }, 0L, INTERVAL_MINUTES, TimeUnit.MINUTES);
+            if (pending != null && !pending.isDone()) {
+                return;
+            }
+            pending = executor.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    runCycle();
+                }
+            }, Math.max(0L, delayMs), TimeUnit.MILLISECONDS);
+        }
     }
 
-    private void runPoll() {
+    /** Adelanta el próximo sondeo (cambio de intervalo o acción "Actualizar"). */
+    public void refreshNow() {
+        synchronized (scheduleLock) {
+            refreshRequested = true;
+            if (pending != null) {
+                pending.cancel(false);
+                pending = null;
+            }
+        }
+        schedule(500L);
+    }
+
+    private void runCycle() {
+        synchronized (scheduleLock) {
+            pending = null;
+        }
         if (polling) {
+            refreshRequested = true;
             return;
         }
         polling = true;
+        refreshRequested = false;
+        long started = System.currentTimeMillis();
+        List<Device> devices = null;
         try {
-            Reading reading = BluettiClient.readNow(this);
-            WidgetProvider.updateAll(this);
-            updateNotification(reading);
+            devices = DeviceStore.devices(this);
+            if (devices.isEmpty()) {
+                Logs.log(this, "Sondeo sin estaciones configuradas");
+            } else {
+                for (Device device : devices) {
+                    Reading reading = BluettiClient.readNow(this, device);
+                    WidgetProvider.updateForDevice(this, device.id);
+                    Logs.log(this, "Sondeo " + device.displayName() + ": "
+                            + (reading.ok() ? reading.percent + "%, " + reading.totalOut() + " W"
+                            : String.valueOf(reading.error)));
+                }
+            }
+            updateNotification(devices);
         } catch (Exception exc) {
             Logs.log(this, "Error en el sondeo: " + exc);
         } finally {
             polling = false;
         }
+
+        long interval = DeviceStore.intervalSeconds(this) * 1000L;
+        long elapsed = System.currentTimeMillis() - started;
+        long delay = refreshRequested ? 500L : Math.max(10000L, interval - elapsed);
+        refreshRequested = false;
+        schedule(delay);
     }
 
-    private void updateNotification(Reading reading) {
+    private void updateNotification(List<Device> devices) {
         try {
             NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (manager != null) {
-                manager.notify(NOTIFICATION_ID, buildNotification(reading));
+                manager.notify(NOTIFICATION_ID, buildNotification(devices));
             }
         } catch (Exception ignored) {
             // sin permiso de notificaciones el servicio sigue funcionando
         }
     }
 
-    private Notification buildNotification(Reading reading) {
+    private Notification buildNotification(List<Device> devices) {
         Intent openIntent = new Intent(this, MainActivity.class);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= 23) {
             flags |= PendingIntent.FLAG_IMMUTABLE;
         }
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, openIntent, flags);
-
         PendingIntent refreshIntent = PendingIntent.getService(this, 1,
                 new Intent(this, PollService.class).setAction(ACTION_REFRESH), flags);
         PendingIntent stopIntent = PendingIntent.getService(this, 2,
                 new Intent(this, PollService.class).setAction(ACTION_STOP), flags);
 
+        int count = devices == null ? 0 : devices.size();
+        String title = count > 1 ? "Bluetti · " + count + " estaciones" : "Bluetti";
         String text;
-        if (reading.ok()) {
-            text = reading.percent + "% · " + reading.totalOut() + " W · " + reading.state()
-                    + (reading.demo ? " · demo" : "");
-        } else if (reading.error != null) {
-            text = "Sin conexión: " + reading.error;
+        if (count == 0) {
+            text = "Sin estaciones configuradas";
         } else {
-            text = "Sin datos todavía";
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < devices.size() && i < 2; i++) {
+                Device device = devices.get(i);
+                Reading reading = DeviceStore.state(this, device.id);
+                if (builder.length() > 0) {
+                    builder.append("  ·  ");
+                }
+                builder.append(device.displayName()).append(": ");
+                if (reading.ok()) {
+                    builder.append(reading.percent).append("% · ").append(reading.totalOut()).append(" W");
+                } else {
+                    builder.append("sin conexión");
+                }
+            }
+            if (count > 2) {
+                builder.append("  ·  +").append(count - 2);
+            }
+            text = builder.toString();
         }
 
         Notification.Builder builder = Build.VERSION.SDK_INT >= 26
                 ? new Notification.Builder(this, CHANNEL_ID)
                 : new Notification.Builder(this);
         builder.setSmallIcon(R.drawable.ic_stat)
-                .setContentTitle("BLUETTI · actualización cada 5 min")
+                .setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
@@ -203,7 +256,9 @@ public final class PollService extends Service {
             executor.shutdownNow();
             executor = null;
         }
-        scheduled = false;
+        synchronized (scheduleLock) {
+            pending = null;
+        }
         super.onDestroy();
     }
 

@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bluetti</string>
-    <string name="widget_description">Carga y consumo del BLUETTI AC180P (se actualiza cada 5 min)</string>
+    <string name="widget_description">Carga y consumo de una estación BLUETTI (elige cuál al añadir el widget)</string>
     <string name="notification_channel">Lectura automática</string>
-    <string name="notification_channel_desc">Actualiza el widget con el estado del BLUETTI cada 5 minutos</string>
+    <string name="notification_channel_desc">Actualiza las estaciones y los widgets con el intervalo configurado</string>
 
-    <string name="no_device">Sin dispositivo configurado</string>
+    <string name="no_device">Sin estaciones configuradas</string>
     <string name="no_data">Sin datos</string>
-    <string name="service_enable">Activar actualización cada 5 min</string>
-    <string name="service_disable">Detener actualización cada 5 min</string>
-    <string name="service_started">Actualización automática activada (cada 5 min)</string>
+    <string name="no_stations">Sin estaciones todavía.\nPulsa «Añadir estación» y elige tu BLUETTI.</string>
+    <string name="no_stations_yet">Añade una estación en la app antes de poner el widget.</string>
+    <string name="choose_station_widget">¿Qué estación muestra el widget?</string>
+    <string name="service_enable">Activar actualización automática</string>
+    <string name="service_disable">Detener actualización automática</string>
+    <string name="service_started">Actualización automática activada</string>
     <string name="service_stopped">Actualización automática detenida</string>
     <string name="scanning">Buscando equipos BLUETTI…</string>
     <string name="scan_empty">No se encontró ningún BLUETTI. Enciéndelo, acércalo y vuelve a intentar.</string>
@@ -21,8 +24,18 @@
     <string name="share_logs">Compartir</string>
     <string name="demo_enable">Modo demo: activar</string>
     <string name="demo_disable">Modo demo: desactivar</string>
-    <string name="demo_on">Modo demo activado: datos simulados para probar el widget</string>
+    <string name="demo_on">Modo demo activado: datos simulados para probar widgets</string>
     <string name="demo_off">Modo demo desactivado</string>
     <string name="clear_logs">Limpiar</string>
     <string name="close">Cerrar</string>
+
+    <string-array name="interval_options">
+        <item>1 min</item>
+        <item>2 min</item>
+        <item>5 min</item>
+        <item>10 min</item>
+        <item>15 min</item>
+        <item>30 min</item>
+        <item>60 min</item>
+    </string-array>
 </resources>

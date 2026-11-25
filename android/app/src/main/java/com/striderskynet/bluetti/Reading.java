@@ -9,10 +9,12 @@ public final class Reading {
     public int acIn = -1;
     public int dcIn = -1;
     public String deviceType = "";
+    public String serialNumber = "";
     public boolean encrypted;
     public boolean demo;
     public String error;
     public long time;
+    public String address = "";
 
     public boolean ok() {
         return error == null && percent >= 0;
@@ -46,5 +48,13 @@ public final class Reading {
             return "descargando";
         }
         return "en reposo";
+    }
+
+    /** Texto corto y estable para el estado (sin datos de error). */
+    public String shortState() {
+        if (error != null) {
+            return "sin conexión";
+        }
+        return state();
     }
 }

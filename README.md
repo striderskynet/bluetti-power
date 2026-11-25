@@ -233,22 +233,24 @@ Versiones de dependencias probadas: `bluetti-bt-lib 0.1.8`, `bleak 3.1.0`,
 
 ---
 
-## 8. Versión Android (app + widget)
+## 8. Versión Android (app + widgets)
 
 En [`android/`](android/README.md) hay una app Android ultraligera (**APK de
-~85 KB, sin dependencias**) que hace lo mismo desde el móvil y añade un
-**widget de pantalla de inicio** con la carga y el consumo, actualizado **cada
-5 minutos** mediante un servicio en primer plano.
+~120 KB, sin dependencias**) que hace lo mismo desde el móvil y añade
+**widgets de pantalla de inicio** con la carga y el consumo de cada estación,
+actualizados con el intervalo que elijas (**1–60 min**).
 
-- APK listo para instalar: [`dist/BluettiWidget-v0.2.apk`](dist/BluettiWidget-v0.2.apk)
-- App: buscar el AC180P, leer al momento, activar la actualización cada 5 min,
-  notificación con el estado y modo demo sin equipo.
-- v0.2: handshake cifrado corregido (la clave pública del equipo llega
-  cifrada), reintentos automáticos y diagnóstico del handshake con registro
-  compartible desde la app.
-- El protocolo (MODBUS + handshake cifrado) está portado a Java y validado con
-  una autoprueba que se ejecuta al compilar (vectores de referencia + handshake
-  simulado). Pendiente de probar en un móvil real.
+- APK listo para instalar: [`dist/BluettiWidget-v0.3.apk`](dist/BluettiWidget-v0.3.apk)
+- **Multiestación**: añade varias estaciones y consulta cada una por separado.
+- **Un widget por estación**: al añadir el widget eliges qué equipo muestra.
+- **Widget rediseñado**: barra de batería, % grande, consumo, estado,
+  desglose AC/DC/entrada y antigüedad de la lectura.
+- **Más información**: modelo, nº de serie, dirección BLE, canal cifrado,
+  entrada de red/solar, estado y última lectura.
+- Intervalo configurable (mínimo 1 min), renombrar/quitar estaciones, modo demo
+  y registro con **Compartir**.
+- Probada contra un AC180P real (canal cifrado). El protocolo está portado a
+  Java y validado con una autoprueba que se ejecuta al compilar.
 - Instrucciones completas, límites y diagnóstico: [`android/README.md`](android/README.md).
 
 ![Vista previa del widget](assets/android-widget.png)

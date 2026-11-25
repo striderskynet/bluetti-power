@@ -48,6 +48,7 @@ public final class BluettiClient {
     // Registros MODBUS del AC180P (misma tabla que la versión de Windows).
     private static final int REG_SOC = 102;
     private static final int REG_DEVICE_TYPE = 110;
+    private static final int REG_SERIAL = 116;
     private static final int REG_DC_OUT = 140;
     private static final int REG_AC_OUT = 142;
     private static final int REG_DC_IN = 144;
@@ -75,8 +76,8 @@ public final class BluettiClient {
         }
 
         public String label() {
-            String flag = encryptedHint == Prefs.HINT_ENCRYPTED ? " · cifrado"
-                    : encryptedHint == Prefs.HINT_PLAIN ? " · sin cifrar" : "";
+            String flag = encryptedHint == DeviceStore.HINT_ENCRYPTED ? " · cifrado"
+                    : encryptedHint == DeviceStore.HINT_PLAIN ? " · sin cifrar" : "";
             return name + "  (" + address + ")  " + rssi + " dBm" + flag;
         }
     }
@@ -196,40 +197,37 @@ public final class BluettiClient {
         }
     }
 
-    /** Lee el estado del equipo configurado, con un reintento por nombre si cambió de dirección. */
-    public static synchronized Reading readNow(Context context) {
-        Reading reading = Prefs.loadReading(context);
+    /** Lee una estación con reintentos y persiste el resultado. */
+    public static synchronized Reading readNow(Context context, Device device) {
+        Reading reading = new Reading();
         reading.time = System.currentTimeMillis();
-        reading.error = null;
+        reading.address = device.address;
+        reading.deviceType = device.model();
 
-        if (Prefs.isDemo(context)) {
-            Reading demo = demoReading();
-            Prefs.saveReading(context, demo);
+        if (DeviceStore.isDemo(context)) {
+            Reading demo = demoReading(device);
+            DeviceStore.saveState(context, device.id, demo);
             return demo;
         }
 
-        String address = Prefs.address(context);
-        if (address.isEmpty()) {
-            reading.error = "sin dispositivo configurado";
-            Prefs.saveReading(context, reading);
-            return reading;
-        }
-        String wantedName = Prefs.name(context);
-        int hint = Prefs.hint(context);
+        String address = device.address;
+        int hint = device.hint;
+        String wantedName = device.name;
         String lastError = "no se pudo leer el equipo";
 
         for (int attempt = 0; attempt < 3; attempt++) {
             if (attempt == 1) {
-                Logs.log(context, "Reintento de lectura en la misma dirección…");
+                Logs.log(context, "Reintento de lectura de " + device.displayName() + "…");
                 sleepQuietly(1200);
-            } else if (attempt == 2 && !wantedName.isEmpty()) {
+            } else if (attempt == 2 && wantedName != null && !wantedName.isEmpty()) {
                 try {
                     ScanHit hit = scanFor(context, wantedName, 6000);
                     if (hit != null && !hit.address.equalsIgnoreCase(address)) {
                         Logs.log(context, "Dirección actualizada: " + address + " -> " + hit.address);
                         address = hit.address;
                         hint = hit.encryptedHint;
-                        Prefs.setAddress(context, address);
+                        device.address = address;
+                        DeviceStore.updateAddress(context, device.id, address);
                     }
                 } catch (Exception scanExc) {
                     Logs.log(context, "Escaneo de recuperación fallido: " + friendly(scanExc));
@@ -241,13 +239,15 @@ public final class BluettiClient {
                 client.read(address, hint, reading);
                 reading.error = null;
                 reading.time = System.currentTimeMillis();
-                Prefs.saveReading(context, reading);
-                Logs.log(context, "OK " + address + ": " + reading.percent + "%, " + reading.totalOut() + " W"
-                        + (reading.encrypted ? " (cifrado)" : ""));
+                reading.address = address;
+                DeviceStore.saveState(context, device.id, reading);
+                Logs.log(context, "OK " + device.displayName() + ": " + reading.percent + "%, "
+                        + reading.totalOut() + " W" + (reading.encrypted ? " (cifrado)" : ""));
                 return reading;
             } catch (Exception exc) {
                 lastError = friendly(exc);
-                Logs.log(context, "Fallo leyendo " + address + " (intento " + (attempt + 1) + "): " + lastError);
+                Logs.log(context, "Fallo leyendo " + device.displayName() + " (intento "
+                        + (attempt + 1) + "): " + lastError);
             } finally {
                 client.close();
             }
@@ -255,24 +255,30 @@ public final class BluettiClient {
 
         reading.error = lastError;
         reading.time = System.currentTimeMillis();
-        Prefs.saveReading(context, reading);
+        DeviceStore.saveState(context, device.id, reading);
         return reading;
     }
 
-    /** Datos simulados para probar la app y el widget sin el equipo (modo demo). */
-    private static Reading demoReading() {
+    /** Datos simulados por estación para probar la app y el widget sin equipo. */
+    private static Reading demoReading(Device device) {
         long now = System.currentTimeMillis();
+        int hash = Math.abs(device.id.hashCode());
         double phase = (now % 600000L) / 600000.0;
         Reading reading = new Reading();
-        reading.percent = 55 + (int) Math.round(30 * Math.sin(phase * Math.PI * 2));
-        reading.acOut = 120 + (int) Math.round(100 * Math.sin(phase * Math.PI * 4));
+        reading.percent = 40 + (hash % 50) + (int) Math.round(5 * Math.sin(phase * Math.PI * 2));
+        if (reading.percent > 100) {
+            reading.percent = 100;
+        }
+        reading.acOut = 80 + (hash % 200);
         reading.dcOut = 15;
         reading.acIn = 0;
-        reading.dcIn = 0;
-        reading.deviceType = "AC180P";
+        reading.dcIn = hash % 60;
+        reading.deviceType = device.model();
+        reading.serialNumber = "DEMO" + (hash % 100000);
         reading.encrypted = true;
         reading.demo = true;
         reading.time = now;
+        reading.address = device.address;
         return reading;
     }
 
@@ -306,11 +312,29 @@ public final class BluettiClient {
             throw new IOException("modelo no reconocido: " + deviceType);
         }
         reading.deviceType = deviceType;
+        try {
+            reading.serialNumber = parseSerial(readRegister(REG_SERIAL, 4));
+        } catch (IOException ignored) {
+            reading.serialNumber = "";
+        }
         reading.dcOut = Modbus.u16(readRegister(REG_DC_OUT, 1), 0);
         reading.acOut = Modbus.u16(readRegister(REG_AC_OUT, 1), 0);
         reading.dcIn = Modbus.u16(readRegister(REG_DC_IN, 1), 0);
         reading.acIn = Modbus.u16(readRegister(REG_AC_IN, 1), 0);
+        reading.address = address;
         reading.time = System.currentTimeMillis();
+    }
+
+    /** Número de serie: 4 palabras u16 combinadas de menor a mayor peso. */
+    private static String parseSerial(byte[] body) {
+        if (body == null || body.length < 8) {
+            return "";
+        }
+        long value = ((long) Modbus.u16(body, 0))
+                | (((long) Modbus.u16(body, 2)) << 16)
+                | (((long) Modbus.u16(body, 4)) << 32)
+                | (((long) Modbus.u16(body, 6)) << 48);
+        return Long.toString(value);
     }
 
     private void connect(String address) throws IOException {
@@ -413,12 +437,12 @@ public final class BluettiClient {
     }
 
     private boolean establishChannel(int hint) throws IOException {
-        if (hint == Prefs.HINT_PLAIN) {
+        if (hint == DeviceStore.HINT_PLAIN) {
             encryptedMode = false;
             return false;
         }
         lastStage = "esperando challenge";
-        long firstWait = hint == Prefs.HINT_ENCRYPTED ? 8000 : 2500;
+        long firstWait = hint == DeviceStore.HINT_ENCRYPTED ? 8000 : 2500;
         byte[] first = pollNotification(firstWait);
         if (first != null) {
             handleNotification(first);
@@ -439,7 +463,7 @@ public final class BluettiClient {
             Logs.log(context, "Canal cifrado listo (MTU=" + mtu + ")");
             return true;
         }
-        if (hint == Prefs.HINT_ENCRYPTED) {
+        if (hint == DeviceStore.HINT_ENCRYPTED) {
             String detail = "el equipo no completó el canal cifrado (etapa: " + lastStage
                     + ", MTU=" + mtu + ", notificaciones=" + notificationsSeen + ")";
             Logs.log(context, "ERROR: " + detail);
@@ -753,11 +777,11 @@ public final class BluettiClient {
 
     private static int encryptionHint(ScanRecord record) {
         if (record == null) {
-            return Prefs.HINT_UNKNOWN;
+            return DeviceStore.HINT_UNKNOWN;
         }
         SparseArray<byte[]> manufacturer = record.getManufacturerSpecificData();
         if (manufacturer == null) {
-            return Prefs.HINT_UNKNOWN;
+            return DeviceStore.HINT_UNKNOWN;
         }
         boolean plain = false;
         for (int i = 0; i < manufacturer.size(); i++) {
@@ -766,13 +790,13 @@ public final class BluettiClient {
                 continue;
             }
             if (containsAscii(data, "BLUETTF")) {
-                return Prefs.HINT_ENCRYPTED;
+                return DeviceStore.HINT_ENCRYPTED;
             }
             if (containsAscii(data, "BLUETTI")) {
                 plain = true;
             }
         }
-        return plain ? Prefs.HINT_PLAIN : Prefs.HINT_UNKNOWN;
+        return plain ? DeviceStore.HINT_PLAIN : DeviceStore.HINT_UNKNOWN;
     }
 
     private static boolean containsAscii(byte[] haystack, String needle) {
@@ -810,3 +834,4 @@ public final class BluettiClient {
         }
     }
 }
+

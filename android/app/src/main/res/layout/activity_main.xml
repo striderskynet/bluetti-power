@@ -9,7 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:padding="18dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -20,162 +20,125 @@
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/device_line"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/muted"
-            android:textSize="12sp" />
-
-        <TextView
             android:id="@+id/app_version"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="v0.2"
+            android:text="v0.3"
             android:textColor="@color/muted"
             android:textSize="10sp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/card_bg"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/status_pct"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="@color/good"
-                    android:textSize="46sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="2dp"
-                    android:text="%"
-                    android:textColor="@color/muted"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/status_w"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="end"
-                    android:text="—"
-                    android:textColor="@color/text"
-                    android:textSize="22sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/status_state"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/no_data"
-                android:textColor="@color/text"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/status_updated"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="@color/muted"
-                android:textSize="11sp" />
-        </LinearLayout>
 
         <TextView
             android:id="@+id/status_hint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:textColor="@color/accent"
             android:textSize="12sp" />
 
-        <Button
-            android:id="@+id/btn_scan"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/btn_bg"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:text="Buscar dispositivo"
-            android:textAllCaps="false"
-            android:textColor="@color/text"
-            android:textSize="14sp" />
+            android:layout_marginTop="12dp"
+            android:background="@drawable/card_bg"
+            android:orientation="vertical"
+            android:padding="14dp">
 
-        <Button
-            android:id="@+id/btn_refresh"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/btn_bg"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:text="Actualizar ahora"
-            android:textAllCaps="false"
-            android:textColor="@color/text"
-            android:textSize="14sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Actualización automática"
+                android:textColor="@color/text"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/btn_service"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/btn_bg"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:text="@string/service_enable"
-            android:textAllCaps="false"
-            android:textColor="@color/text"
-            android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/btn_demo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/btn_bg"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:text="@string/demo_enable"
-            android:textAllCaps="false"
-            android:textColor="@color/text"
-            android:textSize="14sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cada"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
 
-        <Button
-            android:id="@+id/btn_logs"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/btn_bg"
-            android:paddingTop="12dp"
-            android:paddingBottom="12dp"
-            android:text="@string/logs"
-            android:textAllCaps="false"
-            android:textColor="@color/text"
-            android:textSize="14sp" />
+                <Spinner
+                    android:id="@+id/interval_spinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
 
-        <TextView
+            <Button
+                android:id="@+id/btn_service"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/btn_bg"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="@string/service_enable"
+                android:textAllCaps="false"
+                android:textColor="@color/text"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_add"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_bg"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="Añadir estación"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btn_logs"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_bg"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="@string/logs"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_demo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/btn_bg"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="@string/demo_enable"
+                android:textAllCaps="false"
+                android:textColor="@color/text"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/stations_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Widget: mantén pulsado el escritorio → Widgets → Bluetti. Muestra la carga y el consumo, y se actualiza cada 5 minutos mientras la actualización automática esté activada."
-            android:textColor="@color/muted"
-            android:textSize="11sp" />
+            android:layout_marginTop="4dp"
+            android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

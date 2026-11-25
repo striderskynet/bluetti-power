@@ -1,135 +1,149 @@
-# BluettiWidget — app Android + widget para el BLUETTI AC180P
+# BluettiWidget — app Android + widgets para estaciones BLUETTI
 
-App Android **ultraligera** (APK de ~85 KB, sin dependencias ni Google Play
-Services) que se conecta por Bluetooth LE al BLUETTI AC180P y muestra:
+App Android **ultraligera** (APK de ~120 KB, sin dependencias ni Google Play
+Services) que se conecta por Bluetooth LE a una o varias estaciones BLUETTI
+(AC180P y familia V2), y muestra su estado en la app y en **widgets** de la
+pantalla de inicio.
 
-- **% de carga** y **consumo actual (W)** en la app y en un **widget** de la
-  pantalla de inicio.
-- Estado (cargando / descargando / reposo), entrada de red/solar y hora de la
-  última lectura.
-- **El widget se actualiza cada 5 minutos** mediante un servicio en primer
-  plano (la única forma fiable en Android; WorkManager no baja de 15 min).
+- **Varias estaciones** a la vez: añade todas las que quieras y consulta cada
+  una por separado.
+- **Un widget por estación**: al añadir el widget eliges qué estación muestra;
+  puedes tener varios widgets (uno por equipo).
+- **Intervalo configurable** de actualización automática: **1, 2, 5, 10, 15,
+  30 o 60 minutos** (mínimo 1 minuto).
+- **Widget rediseñado**: barra de batería con degradado, % grande, consumo,
+  estado, desglose AC/DC/entrada y antigüedad de la lectura.
+- **Más información por estación**: modelo, nº de serie, dirección BLE, canal
+  cifrado, salida AC/DC, entrada de red/solar, estado y última lectura.
+- Renombrar y quitar estaciones, modo demo, registro con **Compartir**.
+- Servicio en primer plano para que las actualizaciones no se duerman, con
+  notificación-resumen y acciones *Actualizar/Detener*.
 
-Sin nube, sin telemetría, sin cuentas. Todo se queda en el móvil.
+Sin nube, sin cuentas, sin telemetría. Todo se queda en el móvil.
 
-![Vista previa del diseño del widget](../assets/android-widget.png)
-
-> **Estado:** el protocolo (MODBUS + handshake cifrado BLE) está validado con
-> una autoprueba contra vectores de la implementación de referencia y una
-> simulación completa del intercambio, y con el cliente Python del port de
-> Raspberry contra un AC180P real. En Android, la v0.2 corrige el handshake
-> cifrado (la clave pública del equipo llega cifrada), añade reintentos y
-> guarda un diagnóstico detallado que se puede compartir desde la app.
-> **Falta la prueba en un móvil real** (durante el desarrollo no había ningún
-> Android conectado al PC). Si algo falla, abre **Registro → Compartir** y
-> envíame el texto: incluye MTU, notificaciones y la etapa exacta del handshake.
-
-### v0.2 (importante si vienes de v0.1)
-
-- Corregido el handshake: la clave pública del equipo llega **cifrada** con la
-  clave temporal; antes se ignoraba y el equipo cortaba la conexión.
-- 3 reintentos automáticos (misma dirección y búsqueda por nombre).
-- MTU: se registra el valor negociado y se reintenta si es bajo.
-- Log de cada etapa del handshake visible en la app, con botón **Compartir**.
-- Misma clave de firma que v0.1: se instala **encima** sin desinstalar.
+![Vista previa del widget](../assets/android-widget.png)
 
 ## Instalación
 
-1. Copia `dist/BluettiWidget.apk` al móvil (cable, Drive, Telegram…).
-2. Ábrelo desde el gestor de archivos y acepta **instalar apps de origen
-   desconocido** para esa aplicación.
-3. Al abrir la app concede los permisos: **Dispositivos cercanos**
-   (Bluetooth), **Notificaciones** y, en Android 11 o inferior, **Ubicación**.
+1. Descarga `dist/BluettiWidget-v0.3.apk` (o desde el release de GitHub) y
+   ábrelo en el móvil; acepta **instalar apps de origen desconocido**.
+2. Concede permisos: **Dispositivos cercanos**, **Notificaciones** y, en
+   Android 11 o inferior, **Ubicación**.
+3. APK firmado con clave de depuración (no es para Google Play). Para
+   actualizar encima conserva el mismo APK/keystore.
 
-El APK va firmado con una clave de depuración (`android/debug.keystore`), no es
-para Google Play. Para actualizarlo conserva ese keystore (o usa siempre el
-mismo APK).
+## Uso
 
-## Primer uso
+### Añadir estaciones
 
-1. Enciende el AC180P y déjalo cerca.
-2. Abre **Bluetti** → **Buscar dispositivo** → elige el `AC180P…` de la lista.
-3. **Actualizar ahora** para confirmar que lee bien (carga y vatios).
-4. **Activar actualización cada 5 min**. Aparecerá una notificación persistente
-   (es obligatoria para que Android no duerma el proceso). La notificación
-   muestra el estado y tiene acciones *Actualizar* y *Detener*.
-5. Añade el widget: mantén pulsado un hueco del escritorio → **Widgets** →
-   **Bluetti**. El widget se actualiza solo cada 5 minutos.
+1. Enciende la estación y cierra la app oficial de BLUETTI en el móvil (solo
+   admite una conexión BLE a la vez).
+2. **Añadir estación** → elige el equipo en la lista. Se añade a la lista y se
+   lee al momento.
+3. Repite para cada estación.
 
-Sin el equipo a mano puedes pulsar **Modo demo** para ver la app y el widget
-funcionando con datos simulados.
+Cada tarjeta muestra nombre (modelo + últimos dígitos o el alias que le pongas),
+dirección, **%**, **consumo W**, estado, antigüedad y desglose
+`AC · DC · entrada`. Botones: **Leer**, **Datos**, **Nombre**, **Quitar**.
 
-## Cómo funciona
+### Ver más información
 
-- Mismas características BLE que la versión de Windows (`ff01` notificaciones,
-  `ff02` escritura) y mismas tramas MODBUS: SOC (reg. 102), modelo (110) y
-  potencias (140/142/144/146).
-- El AC180P detectado usa **canal BLE cifrado** (ECDH P-256 + AES-CBC). El
-  handshake está portado a Java desde `bluetti-bt-lib` (MIT) y cubierto por la
-  autoprueba (`tools/ProtocolSelfTest.java`).
-- Cada actualización abre una conexión, lee los registros y se desconecta.
-- La app detecta el cifrado automáticamente, guarda la dirección del equipo y,
-  si el equipo cambia de dirección BLE, lo reencuentra por nombre.
-- El widget guarda el último estado en `SharedPreferences`; si el servicio se
-  detiene, el widget muestra la última lectura con la hora (no inventa datos).
+**Datos** abre el detalle de la estación: modelo, **número de serie**,
+dirección BLE, conexión cifrada/sin cifrar, salida AC/DC y total, entrada
+AC/solar y total, estado y fecha/hora de la última lectura (con su antigüedad).
+
+### Actualización automática
+
+En la tarjeta superior elige **Cada** (1–60 min) y pulsa **Activar
+actualización automática**. Aparece una notificación persistente (obligatoria
+en Android) con un resumen de las estaciones, botones *Actualizar* y *Detener*.
+El servicio recorre las estaciones una a una; si tienes varias, cada ciclo
+tardará unos segundos más por equipo.
+
+### Widgets
+
+1. Mantén pulsado el escritorio → **Widgets** → **Bluetti**.
+2. Elige **qué estación** muestra ese widget (puedes añadir uno por estación).
+3. El widget se actualiza con el intervalo configurado. Tócalo para abrir la
+   app.
+
+### Modo demo
+
+Activa **Modo demo** para probar la app y los widgets sin equipo (datos
+simulados por estación).
 
 ## Límites y notas
 
-- El AC180P admite **una conexión BLE a la vez**: mientras la app lee, la app
-  oficial de BLUETTI en el móvil puede no conectar (y viceversa).
+- El AC180P admite **una conexión BLE a la vez**: mientras se lee una estación,
+  la app oficial no puede conectar con ella; y tu app no puede leer dos a la
+  vez (las lee en secuencia).
 - Android puede matar el servicio en algunos fabricantes (Xiaomi, Huawei…).
-  Si el widget deja de actualizarse, desactiva la optimización de batería para
-  **Bluetti** en los ajustes del sistema.
-- El intervalo es de 5 minutos *de reloj*: cada ciclo incluye los segundos de
-  la lectura.
-- Tras reiniciar el móvil, si el servicio estaba activo se intenta reanudar
-  automáticamente; si el fabricante lo bloquea, abre la app una vez.
-- En Android 11 o inferior el **escaneo** puede requerir la ubicación activada;
-  para leer el equipo ya emparejado/configurado no hace falta escanear.
+  Desactiva la optimización de batería para **Bluetti** si los widgets dejan de
+  actualizarse.
+- El intervalo es de reloj: cada ciclo incluye los segundos de lectura; con
+  varias estaciones, el ciclo real puede superar ligeramente el intervalo.
+- Tras reiniciar el móvil se intenta reanudar el servicio si estaba activo.
+- En Android 11 o inferior el **escaneo** puede requerir ubicación activada.
+
+## Actualizar desde versiones anteriores
+
+- **v0.3**: multiestación, widgets por estación, intervalo 1–60 min, widget
+  rediseñado, detalles con nº de serie. La estación de la v0.2 se migra
+  automáticamente; los widgets antiguos se asignan a la primera estación
+  (puedes quitarlos y volver a añadirlos para elegir otra).
+  Tras instalar, **abre la app una vez** para que se actualicen los widgets y
+  el servicio.
+- **v0.2**: corrigió el handshake cifrado (clave pública del equipo cifrada).
+- **v0.1**: primera versión.
 
 ## Diagnóstico
 
-Dentro de la app: botón **Registro** (los últimos eventos, direcciones y
-errores). Errores habituales:
+Botón **Registro**: incluye conexión, MTU negociado, cada etapa del handshake,
+lecturas y errores. Botones **Compartir** y **Limpiar**.
 
-| Mensaje | Causa |
+| Mensaje | Causa / solución |
 | --- | --- |
 | `permisos de Bluetooth denegados` | Concede "Dispositivos cercanos". |
-| `no se pudo conectar` | AC180P apagado, fuera de alcance o conectado a otro dispositivo. |
-| `el equipo no completó el canal cifrado` | Falló el handshake; prueba a acercar el móvil y reintentar. |
-| `sin respuesta del equipo (registro N)` | La conexión se cortó a mitad de lectura (señal débil). |
+| `no se pudo conectar` | Estación apagada, lejos o conectada a otro dispositivo. |
+| `el equipo no completó el canal cifrado` | Handshake interrumpido; acerca el móvil y reintenta (la app ya reintenta 3 veces). |
+| `sin respuesta del equipo (registro N)` | Conexión cortada a mitad de lectura (señal débil). |
+| Widget `sin estación` | Quita el widget y vuelve a añadirlo eligiendo estación (o añade una estación). |
 
 ## Compilar
 
-No usa Gradle. Toolchain mínimo (JDK 17 + platform 34 + build-tools 34):
+Sin Gradle ni Android Studio. Toolchain mínimo (JDK 17 + platform 34 +
+build-tools 34):
 
 ```powershell
-.\setup_toolchain.ps1   # una sola vez: descarga JDK/SDK a %LOCALAPPDATA%\BluettiAndroid
+.\setup_toolchain.ps1   # una sola vez
 .\build.ps1             # autoprueba + compila + firma -> dist\BluettiWidget.apk
 ```
 
-`build.ps1` ejecuta antes la **autoprueba del protocolo** (MODBUS, AES,
-ECDH, firmas y un handshake cifrado simulado) y falla si algo no cuadra.
+El build ejecuta antes la **autoprueba del protocolo** (MODBUS, AES, ECDH,
+firmas y un handshake cifrado simulado).
 
 ### Estructura
 
 ```
 app/src/main/java/com/striderskynet/bluetti/
-  BluettiClient.java   BLE: escaneo, conexión, handshake y lecturas
-  BluettiCrypto.java   handshake cifrado (ECDH P-256 + AES-CBC)
-  Modbus.java          tramas MODBUS RTU y CRC16
-  PollService.java     servicio en primer plano cada 5 min
-  WidgetProvider.java  widget (RemoteViews)
-  MainActivity.java    interfaz
-  Prefs.java           ajustes + último estado
-  Logs.java            registro local
-app/src/main/res/      layouts, widget, iconos
-tools/ProtocolSelfTest.java
+  MainActivity.java          lista de estaciones, ajustes y detalle
+  Device.java                estación configurada
+  DeviceStore.java           persistencia: estaciones, estados, intervalo, widgets
+  BluettiClient.java         BLE: escaneo, conexión, handshake y lecturas
+  BluettiCrypto.java         handshake cifrado (ECDH P-256 + AES-CBC)
+  Modbus.java                tramas MODBUS RTU y CRC16
+  PollService.java           servicio en primer plano multiestación
+  WidgetProvider.java        widgets (RemoteViews) por estación
+  WidgetConfigureActivity.java  selector de estación al añadir el widget
+  BootReceiver.java          reanudar tras reinicio
+  Logs.java                  registro local compartible
+app/src/main/res/            layouts, widget, barra de batería, iconos
+tools/ProtocolSelfTest.java  autoprueba del protocolo
 ```
 
-### Créditos
+## Créditos
 
 Protocolo y criptografía basados en
 [`bluetti-bt-lib`](https://github.com/Patrick762/bluetti-bt-lib) (MIT) y en el
-trabajo original de `bluetti_mqtt` (warhammerkid, nhurman, jesherman). Esta app
-es un proyecto no oficial, sin relación con BLUETTI.
+trabajo original de `bluetti_mqtt` (warhammerkid, nhurman, jesherman). Proyecto
+no oficial, sin relación con BLUETTI.
