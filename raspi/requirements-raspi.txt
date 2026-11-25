@@ -1,0 +1,4 @@
+# Dependencias del port Raspberry Pi (raspi/). Solo wheels precompilados:
+# no hace falta compilador en Raspberry Pi OS Lite.
+bleak>=3.0,<4
+cryptography>=42

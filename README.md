@@ -209,6 +209,8 @@ assets/         icono .ico y capturas
 tests/          pruebas unitarias
 build.ps1       compila dist\BluettiTray.exe
 build-cli.ps1   compila dist\BluettiTrayCLI.exe (consola)
+android/        app Android + widget (ver android/README.md)
+raspi/          daemon headless para Raspberry Pi (ver raspi/README.md)
 ```
 
 Versiones de dependencias probadas: `bluetti-bt-lib 0.1.8`, `bleak 3.1.0`,
@@ -231,7 +233,49 @@ Versiones de dependencias probadas: `bluetti-bt-lib 0.1.8`, `bleak 3.1.0`,
 
 ---
 
-## 8. Créditos
+## 8. Versión Android (app + widget)
+
+En [`android/`](android/README.md) hay una app Android ultraligera (**APK de
+~85 KB, sin dependencias**) que hace lo mismo desde el móvil y añade un
+**widget de pantalla de inicio** con la carga y el consumo, actualizado **cada
+5 minutos** mediante un servicio en primer plano.
+
+- APK listo para instalar: [`dist/BluettiWidget-v0.1.apk`](dist/BluettiWidget-v0.1.apk)
+- App: buscar el AC180P, leer al momento, activar la actualización cada 5 min,
+  notificación con el estado y modo demo sin equipo.
+- El protocolo (MODBUS + handshake cifrado) está portado a Java y validado con
+  una autoprueba que se ejecuta al compilar (vectores de referencia + handshake
+  simulado). Pendiente de probar en un móvil real.
+- Instrucciones completas, límites y diagnóstico: [`android/README.md`](android/README.md).
+
+![Vista previa del widget](assets/android-widget.png)
+
+---
+
+## 9. Versión Raspberry Pi (headless)
+
+En [`raspi/`](raspi/README.md) hay un daemon para **Raspberry Pi OS Lite
+64-bit (arm64, Python 3.13)** que lee el AC180P cada 60 s y publica el estado
+por **HTTP JSON** (`GET /status`) y en un archivo `state.json`, con servicio
+**systemd**, logs en journald y sin interfaz gráfica. Dependencias mínimas
+(`bleak` + `cryptography`, wheels aarch64; sin compilador).
+
+```bash
+cd raspi
+sudo ./install.sh
+sudo /opt/bluetti-monitor/venv/bin/python /opt/bluetti-monitor/bluetti_pi.py scan
+sudo /opt/bluetti-monitor/venv/bin/python /opt/bluetti-monitor/bluetti_pi.py setup \
+    --config /etc/bluetti-monitor/config.json
+sudo systemctl start bluetti-monitor
+curl http://localhost:8099/status
+```
+
+Instrucciones completas (configuración, Home Assistant, diagnóstico):
+[`raspi/README.md`](raspi/README.md).
+
+---
+
+## 10. Créditos
 
 - Protocolo y mapa de registros: [`bluetti-bt-lib`](https://github.com/Patrick762/bluetti-bt-lib)
   de Patrick762 (MIT), basado en [`bluetti_mqtt`](https://github.com/warhammerkid/bluetti_mqtt)

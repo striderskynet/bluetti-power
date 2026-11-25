@@ -7,6 +7,11 @@ __pycache__/
 build/
 *.spec.bak
 
+# Android (salida intermedia, APK duplicado y clave local de firma)
+android/build/
+android/dist/
+android/debug.keystore
+
 # Configuración y registros locales
 *.log
 config.json

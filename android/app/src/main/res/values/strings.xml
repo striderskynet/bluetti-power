@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bluetti</string>
+    <string name="widget_description">Carga y consumo del BLUETTI AC180P (se actualiza cada 5 min)</string>
+    <string name="notification_channel">Lectura automática</string>
+    <string name="notification_channel_desc">Actualiza el widget con el estado del BLUETTI cada 5 minutos</string>
+
+    <string name="no_device">Sin dispositivo configurado</string>
+    <string name="no_data">Sin datos</string>
+    <string name="service_enable">Activar actualización cada 5 min</string>
+    <string name="service_disable">Detener actualización cada 5 min</string>
+    <string name="service_started">Actualización automática activada (cada 5 min)</string>
+    <string name="service_stopped">Actualización automática detenida</string>
+    <string name="scanning">Buscando equipos BLUETTI…</string>
+    <string name="scan_empty">No se encontró ningún BLUETTI. Enciéndelo, acércalo y vuelve a intentar.</string>
+    <string name="choose_device">Elige tu BLUETTI</string>
+    <string name="reading">Leyendo el equipo… (puede tardar unos segundos)</string>
+    <string name="notifications_needed">Concede el permiso de notificaciones para el servicio en segundo plano.</string>
+    <string name="permissions_missing">Faltan permisos de Bluetooth. Concédelos para poder conectarse.</string>
+    <string name="logs">Registro</string>
+    <string name="demo_enable">Modo demo: activar</string>
+    <string name="demo_disable">Modo demo: desactivar</string>
+    <string name="demo_on">Modo demo activado: datos simulados para probar el widget</string>
+    <string name="demo_off">Modo demo desactivado</string>
+    <string name="clear_logs">Limpiar</string>
+    <string name="close">Cerrar</string>
+</resources>

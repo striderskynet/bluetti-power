@@ -1,0 +1,22 @@
+[Unit]
+Description=BLUETTI AC180P monitor (BLE)
+Documentation=https://github.com/striderskynet/bluetti-power
+After=bluetooth.target network-online.target
+Wants=bluetooth.target network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/bluetti-monitor/venv/bin/python /opt/bluetti-monitor/bluetti_pi.py run --config /etc/bluetti-monitor/config.json
+WorkingDirectory=/opt/bluetti-monitor
+Restart=always
+RestartSec=15
+User=root
+Environment=PYTHONUNBUFFERED=1
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/bluetti-monitor /etc/bluetti-monitor
+
+[Install]
+WantedBy=multi-user.target
